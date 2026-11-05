@@ -1,0 +1,8 @@
+.env
+*.pyc
+__pycache__/
+node_modules/
+.venv/
+product/evals/reports/*
+!product/evals/reports/baseline*
+*.log

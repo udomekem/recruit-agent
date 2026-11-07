@@ -11,6 +11,7 @@ Every move:
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from sqlalchemy import select
@@ -131,7 +132,10 @@ async def apply_transition(
     expected_state: CandidateState | None = None,
     expected_version: int | None = None,
     trace_id: str | None = None,
+    extra: Callable[[AsyncSession, Candidate], None] | None = None,
 ) -> Snapshot:
+    """`extra` adds rows in the same transaction as the move (e.g. the CV parse result),
+    so a candidate is never PARSED without its parse, or the reverse."""
     if not reason.strip():
         raise ValueError("every transition needs a reason")
     try:
@@ -175,6 +179,8 @@ async def apply_transition(
             cand.review_return_state = current if to_state == CandidateState.NEEDS_REVIEW else None
             if to_state == CandidateState.NO_ANSWER:
                 cand.screen_call_attempts += 1
+            if extra is not None:
+                extra(s, cand)
             await s.flush()
             return Snapshot.of(cand)
     except IntegrityError as exc:  # same idempotency key committed by a concurrent writer
@@ -246,6 +252,11 @@ async def erase_personal_data(
         cand.state = to
         cand.state_version = from_version + 1
         cand.review_return_state = None
+        from sqlalchemy import delete as sql_delete
+
+        from app.db.models import CvParse
+
+        await s.execute(sql_delete(CvParse).where(CvParse.candidate_id == cand.id))
         answers = (await s.execute(select(Answer).where(Answer.candidate_id == cand.id))).scalars()
         for a in answers:
             if isinstance(a.value, str):

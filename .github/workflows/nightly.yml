@@ -28,7 +28,7 @@ jobs:
         run: make eval
       - name: Harness self test
         run: make eval-selftest
-      - name: Rubric builder evals (real model, kie.ai DeepSeek, about $0.05)
+      - name: Real model evals, rubric builder and CV parser (kie.ai DeepSeek, about $0.11)
         env:
           LLM_PROVIDER: kie
           KIE_API_KEY: ${{ secrets.KIE_API_KEY }}
@@ -40,7 +40,10 @@ jobs:
             echo "::warning::KIE_API_KEY secret not set: real model evals NOT run"
             exit 0
           fi
-          uv run python -m evals run --suite rubric
+          status=0
+          uv run python -m evals run --suite rubric || status=$?
+          uv run python -m evals run --suite cv || status=$?
+          exit $status
       - uses: actions/upload-artifact@v4
         if: always()
         with:

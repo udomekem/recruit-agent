@@ -18,9 +18,12 @@ import uuid
 
 from app.agents.rubric_builder import build_rubric
 from app.config import Settings
+from app.db.models import CvParse
 from app.db.session import SessionMaker
 from app.domain.jobs import JobState
 from app.domain.states import SYSTEM_STEPS, ActorType, CandidateState
+from app.intake.parse import run_parse
+from app.integrations.storage import Storage
 from app.llm.client import LLMClient, LLMError
 from app.observability.tracing import Tracer
 from app.workflow.dispatch import AdvanceJob, Dispatcher, InlineDispatcher, RubricJob
@@ -50,6 +53,7 @@ class Pipeline:
         settings: Settings,
         steps: StubSteps | None = None,
         llm: LLMClient | None = None,
+        storage: Storage | None = None,
     ) -> None:
         self.sessions = sessions
         self.dispatcher = dispatcher
@@ -57,6 +61,7 @@ class Pipeline:
         self.settings = settings
         self.steps = steps or StubSteps()
         self.llm = llm
+        self.storage = storage
 
     async def schedule(self, cand: Snapshot) -> None:
         """Queue the next system step if the candidate's state has one."""
@@ -174,6 +179,10 @@ class Pipeline:
         step = SYSTEM_STEPS.get(cand.state)
         if step is None:
             return None  # decision point or terminal: wait for a recruiter
+        if step == "parse" and self.storage is not None:
+            parsed = await self._parse_real(cand)
+            if parsed != "stub":
+                return parsed  # type: ignore[return-value]
 
         with self.tracer.span(
             f"step:{step}",
@@ -221,6 +230,56 @@ class Pipeline:
                 actor="system",
             ):
                 pass
+        await self.schedule(moved)
+        return moved
+
+    async def _parse_real(self, cand: Snapshot) -> Snapshot | None | str:
+        """Phase 2 parse. Returns "stub" to fall back to the stub (test candidates)."""
+        assert self.storage is not None
+        with self.tracer.span(
+            "step:parse",
+            candidate_id=str(cand.id),
+            step="parse",
+            from_state=cand.state.value,
+            prompt_version="cv-parser-v2",
+            model=self.settings.model_extraction,
+            input_tokens=0,
+            output_tokens=0,
+            cost_usd=0.0,
+        ) as span:
+            decision = await run_parse(
+                self.sessions,
+                self.storage,
+                self.llm,
+                cand.id,
+                production=self.settings.environment == "production",
+            )
+            if decision.use_stub:
+                span.update(outcome="stub")
+                return "stub"
+            span.update(**decision.trace)
+            row = decision.row
+
+            def add_row(s: object, c: object) -> None:
+                if row is not None:
+                    s.add(CvParse(candidate_id=cand.id, **row))  # type: ignore[attr-defined]
+
+            try:
+                moved = await apply_transition(
+                    self.sessions,
+                    candidate_id=cand.id,
+                    to_state=decision.to_state,
+                    actor_type=ActorType.SYSTEM,
+                    actor_id="worker:parse",
+                    reason=decision.reason,
+                    expected_state=cand.state,
+                    expected_version=cand.state_version,
+                    trace_id=self.tracer.current_trace_id(),
+                    extra=add_row,
+                )
+            except StaleTransition:
+                span.update(outcome="stale")
+                return None
         await self.schedule(moved)
         return moved
 

@@ -147,9 +147,10 @@ def determinism(cases: list[Case], runs: Runs) -> tuple[float, float, list[dict[
 
 
 def metrics() -> dict[str, MetricFn]:
+    from evals.cv_metrics import METRICS as CV
     from evals.rubric_metrics import METRICS as RUBRIC
 
-    return {"exact_match": exact_match, "determinism": determinism, **RUBRIC}
+    return {"exact_match": exact_match, "determinism": determinism, **RUBRIC, **CV}
 
 
 # ---- running -------------------------------------------------------------------------
@@ -396,6 +397,7 @@ def push_to_langfuse(report: Report, settings: Any) -> list[str]:
     produced (no extra model calls). Best effort: never changes the gate."""
     from langfuse import Evaluation, Langfuse
 
+    from evals.cv_metrics import item_score as cv_item_score
     from evals.rubric_metrics import item_score
 
     client = Langfuse(
@@ -439,6 +441,8 @@ def push_to_langfuse(report: Report, settings: Any) -> list[str]:
                 return Evaluation(
                     name="exact_match", value=1.0 if _exact(output, expected_output) else 0.0
                 )
+            if _agent == "cv_parser":
+                return Evaluation(name="field_accuracy", value=cv_item_score(case, output))
             return Evaluation(name="must_have_recall", value=item_score(case, output))
 
         result = client.get_dataset(ds_name).run_experiment(

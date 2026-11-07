@@ -1,7 +1,7 @@
 # Thin wrappers over Python entry points. Run from product/ inside Ubuntu (WSL2).
 UV ?= uv
 
-.PHONY: help up down services logs migrate test lint typecheck eval eval-full eval-rubric eval-selftest smoke ci
+.PHONY: help up down services logs migrate test lint typecheck eval eval-full eval-rubric eval-cv eval-selftest smoke ci
 
 help:
 	@grep -E '^[a-z-]+:' Makefile | cut -d: -f1
@@ -48,3 +48,6 @@ ci: lint test eval eval-selftest
 
 eval-rubric:   ## rubric builder with the real model (kie.ai DeepSeek, about $0.05)
 	$(UV) run python -m evals run --suite rubric
+
+eval-cv:       ## CV parser and redaction with the real model (kie.ai DeepSeek)
+	$(UV) run python -m evals run --suite cv

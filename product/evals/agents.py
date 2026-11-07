@@ -49,7 +49,7 @@ _RUNTIME: dict[str, Any] = {}
 
 def prepare_runtime(agent: str, *, max_calls: int) -> None:
     """Build the real model client once per check, with a call ceiling."""
-    if agent != "rubric_builder":
+    if agent not in ("rubric_builder", "cv_parser"):
         return
     from app.config import get_settings
     from app.llm.factory import make_llm, provider_key_name
@@ -60,7 +60,7 @@ def prepare_runtime(agent: str, *, max_calls: int) -> None:
     tracer = make_tracer(settings)
     llm = make_llm(settings, tracer)
     if llm is None:
-        raise HarnessError(f"rubric_builder evals need {provider_key_name(settings)} (real model)")
+        raise HarnessError(f"{agent} evals need {provider_key_name(settings)} (real model)")
     _RUNTIME["llm"] = llm
     _RUNTIME["tracer"] = tracer
 
@@ -112,9 +112,75 @@ async def rubric_builder_v1(case_input: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+async def cv_parser_v1(case_input: dict[str, Any]) -> dict[str, Any]:
+    """The phase 2 parse path without the database: extract, pre redact, parse, final
+    redact. Records the exact text sent to the model for the data minimisation bar."""
+    from pathlib import Path
+
+    from app.agents.cv_parser import parse_cv
+    from app.intake.extract import extract
+    from app.intake.redact import final_redact, pre_redact
+    from app.llm.client import LLMAuthError, LLMBudgetExceeded, LLMError, LLMProviderError
+    from evals.harness import DATASETS, HarnessError
+
+    path = Path(DATASETS) / case_input["file"]
+    media = (
+        "application/pdf"
+        if path.suffix == ".pdf"
+        else ("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    )
+    ex = await extract(path.read_bytes(), media)
+    if ex.status != "ok":
+        return {
+            "status": ex.status,
+            "model_calls": 0,
+            "redacted_text": None,
+            "sent_text": None,
+            "profile": None,
+            "cost_usd": 0.0,
+        }
+    it = case_input["intake"]
+    pre = pre_redact(ex.text, name=it["name"], email=it["email"], phone=it["phone"])
+    try:
+        r = await parse_cv(_RUNTIME["llm"], pre_redacted_text=pre.text, candidate_id="eval")
+    except LLMBudgetExceeded as exc:
+        raise HarnessError(f"eval stopped by the call ceiling: {exc}") from exc
+    except (LLMAuthError, LLMProviderError) as exc:
+        raise HarnessError(
+            f"model provider unavailable, eval not measured: {str(exc)[:300]}"
+        ) from exc
+    except LLMError as exc:
+        return {
+            "status": "failed",
+            "error": type(exc).__name__,
+            "model_calls": 1,
+            "redacted_text": None,
+            "sent_text": pre.text,
+            "profile": None,
+            "cost_usd": 0.0,
+        }
+    finally:
+        tracer = _RUNTIME.get("tracer")
+        if tracer is not None:
+            tracer.flush()
+    final = final_redact(pre, [(sp.text, sp.kind) for sp in r.output.personal_spans])
+    return {
+        "status": "parsed",
+        "model_calls": r.attempts,
+        "redacted_text": final.text,
+        "sent_text": pre.text,
+        "profile": r.output.model_dump(mode="json", exclude={"personal_spans"}),
+        "cost_usd": r.cost_usd,
+        "prompt_version": r.prompt_version,
+        "model": r.model,
+        "latency_ms": r.latency_ms,
+    }
+
+
 AGENTS: dict[str, dict[str, AgentFn]] = {
     "dummy": {"v1": dummy_v1, "v1-regressed": dummy_v1_regressed},
     "rubric_builder": {"v1": rubric_builder_v1},
+    "cv_parser": {"v1": cv_parser_v1},
 }
 
 

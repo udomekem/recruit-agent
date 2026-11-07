@@ -19,6 +19,8 @@ dependencies = [
     "jinja2>=3.1.6",
     "python-multipart>=0.0.33",
     "boto3>=1.43.126",
+    "pdfminer-six>=20260107",
+    "python-docx>=1.2.0",
 ]
 
 [dependency-groups]
@@ -28,6 +30,8 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.11",
     "boto3-stubs[s3]>=1.43.126",
+    "reportlab>=5.1.0",
+    "pillow>=13.0.0",
 ]
 
 [tool.uv]
@@ -55,7 +59,7 @@ select = ["E", "F", "I", "B", "UP", "SIM", "ASYNC"]
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-exclude = ["migrations/"]
+exclude = ["migrations/", "evals/datasets/"]  # dataset build scripts
 
 [[tool.mypy.overrides]]
 module = ["arq.*", "langfuse.*"]

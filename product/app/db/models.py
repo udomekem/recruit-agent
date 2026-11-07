@@ -178,6 +178,33 @@ class Answer(Base):
     value: Mapped[Any] = mapped_column(JSONB, nullable=True)
 
 
+class CvParse(Base):
+    """Phase 2. Holds only the redacted copy and the structured profile; the raw extracted
+    text is never stored (it can be rebuilt from the encrypted CV). Erasure deletes rows."""
+
+    __tablename__ = "cv_parses"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    candidate_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidates.id"), nullable=False, index=True
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # parsed | no_text_layer | failed
+    text_layer: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    redacted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    profile: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    redaction_counts: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, default=dict)
+    prompt_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    model: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    cost_usd: Mapped[float | None] = mapped_column(nullable=True)
+    attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
     __table_args__ = (

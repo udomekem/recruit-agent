@@ -107,14 +107,24 @@ UNSUPPORTED_SCHEMA_KEYS = frozenset(
 
 
 def strict_json_schema(model: type[BaseModel]) -> dict[str, Any]:
-    """Pydantic schema with `additionalProperties: false` on every object and constraint
-    keywords the API rejects removed (validation keeps them)."""
+    """Pydantic schema prepared for the model:
+    - `additionalProperties: false` on every object
+    - every property listed as required: optional values are still allowed to be null,
+      but the model must answer each field. Found in phase 2: DeepSeek returned null or
+      skipped list fields with defaults (skills, personal spans) when they were optional.
+    - constraint keywords the APIs reject removed (Pydantic still enforces them)."""
     schema = model.model_json_schema()
 
     def walk(node: Any) -> None:
         if isinstance(node, dict):
             if node.get("type") == "object":
                 node.setdefault("additionalProperties", False)
+                props = node.get("properties")
+                if isinstance(props, dict):
+                    node["required"] = list(props)
+                    for prop in props.values():
+                        if isinstance(prop, dict):
+                            prop.pop("default", None)
             for key in UNSUPPORTED_SCHEMA_KEYS & node.keys():
                 if not isinstance(node[key], dict):
                     del node[key]
@@ -170,9 +180,12 @@ class LLMClient:
         check: Callable[[T], None] | None = None,
         effort: str | None = None,
         trace_fields: dict[str, Any] | None = None,
+        trace_output: bool = True,
     ) -> LLMResult[T]:
         """`check` runs after schema validation; a ValueError from it counts as invalid
-        output (retried with the message). `effort` overrides the tier default."""
+        output (retried with the message). `effort` overrides the tier default.
+        `trace_output=False` keeps the model's output (and validation error text, which can
+        quote it) out of traces: for agents whose output is personal data."""
         model, tier_effort = self._model_and_effort(tier)
         effort = effort or tier_effort
         fallback = tier is ModelTier.JUDGEMENT
@@ -224,7 +237,12 @@ class LLMClient:
                         check(output)
                 except (ValueError, ValidationError) as exc:
                     last_error = str(exc)[:2000]
-                    span.update(outcome="invalid", last_error=last_error)
+                    span.update(
+                        outcome="invalid",
+                        last_error=last_error
+                        if trace_output
+                        else f"{type(exc).__name__} (redacted)",
+                    )
                     messages = [
                         *messages,
                         {"role": "assistant", "content": resp.text or "(empty)"},
@@ -236,7 +254,9 @@ class LLMClient:
                     ]
                     continue
                 latency = round((time.perf_counter() - start) * 1000, 3)
-                span.update(outcome="ok", latency_ms=latency, output=output.model_dump(mode="json"))
+                span.update(outcome="ok", latency_ms=latency)
+                if trace_output:
+                    span.update(output=output.model_dump(mode="json"))
                 return LLMResult(
                     output=output,
                     prompt_id=prompt.id,

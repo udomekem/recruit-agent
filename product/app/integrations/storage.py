@@ -33,6 +33,7 @@ class Storage(Protocol):
     async def put(self, key: str, data: bytes, content_type: str) -> None: ...
     async def delete(self, key: str) -> None: ...
     async def head(self, key: str) -> ObjectInfo | None: ...
+    async def get(self, key: str) -> bytes: ...
 
 
 def new_cv_key(candidate_id: uuid.UUID) -> str:
@@ -55,6 +56,11 @@ class MemoryStorage:
             self.fail_deletes -= 1
             raise StorageError("delete failed (test)")
         self.objects.pop(key, None)
+
+    async def get(self, key: str) -> bytes:
+        if key not in self.objects:
+            raise StorageError("object not found")
+        return self.objects[key][0]
 
     async def head(self, key: str) -> ObjectInfo | None:
         if key not in self.objects:
@@ -135,6 +141,16 @@ class S3Storage:
             )
         except Exception as exc:
             raise StorageError(f"could not store object: {type(exc).__name__}") from exc
+
+    async def get(self, key: str) -> bytes:
+        def _get() -> bytes:
+            r = self._client.get_object(Bucket=self.bucket, Key=key)
+            return bytes(r["Body"].read())
+
+        try:
+            return await asyncio.to_thread(_get)
+        except Exception as exc:
+            raise StorageError(f"could not read object: {type(exc).__name__}") from exc
 
     async def delete(self, key: str) -> None:
         try:

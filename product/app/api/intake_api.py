@@ -209,4 +209,40 @@ def register(app: FastAPI, cfg: Settings, Recruiter: Any, Pl: Any, Store: Any) -
             status_code=200, content={"id": str(c.id), "state": c.state.value, "erased": True}
         )
 
-    _ = (apply_page, apply_submit, bulk_upload, erase)
+    @app.get("/candidates/{candidate_id}/parse")
+    async def candidate_parse(candidate_id: uuid.UUID, _: Recruiter, p: Pl) -> JSONResponse:
+        """Latest parse: the redacted copy only, never the original text."""
+        from sqlalchemy import select
+
+        from app.db.models import CvParse
+
+        async with p.sessions() as s:
+            row = (
+                await s.execute(
+                    select(CvParse)
+                    .where(CvParse.candidate_id == candidate_id)
+                    .order_by(CvParse.created_at.desc())
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+        if row is None:
+            return JSONResponse(
+                status_code=404, content={"error": "not_found", "detail": "no parse yet"}
+            )
+        return JSONResponse(
+            content={
+                "status": row.status,
+                "text_layer": row.text_layer,
+                "redacted_text": row.redacted_text,
+                "profile": row.profile,
+                "redaction_counts": row.redaction_counts,
+                "prompt_id": row.prompt_id,
+                "prompt_version": row.prompt_version,
+                "model": row.model,
+                "cost_usd": row.cost_usd,
+                "attempts": row.attempts,
+                "created_at": row.created_at.isoformat(),
+            }
+        )
+
+    _ = (apply_page, apply_submit, bulk_upload, erase, candidate_parse)

@@ -17,6 +17,7 @@ from app.config import get_settings
 from app.db.session import make_engine, make_sessionmaker
 from app.domain.jobs import JobState
 from app.domain.states import CandidateState
+from app.integrations.storage import make_storage
 from app.llm.factory import make_llm
 from app.observability.tracing import make_tracer
 from app.workflow.dispatch import ArqDispatcher
@@ -30,8 +31,17 @@ async def startup(ctx: dict[str, Any]) -> None:
     ctx["engine"] = engine
     tracer = make_tracer(_settings)
     llm = make_llm(_settings, tracer)
+    store = make_storage(_settings)
+    ensure = getattr(store, "ensure_bucket", None)
+    if ensure is not None:
+        await ensure()
     ctx["pipeline"] = Pipeline(
-        make_sessionmaker(engine), ArqDispatcher(ctx["redis"]), tracer, _settings, llm=llm
+        make_sessionmaker(engine),
+        ArqDispatcher(ctx["redis"]),
+        tracer,
+        _settings,
+        llm=llm,
+        storage=store,
     )
 
 

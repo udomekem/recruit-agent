@@ -90,6 +90,14 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine = None
         arq_pool = None
+        if storage is None:
+            store = make_storage(cfg)
+            ensure = getattr(store, "ensure_bucket", None)
+            if ensure is not None:
+                await ensure()
+            app.state.storage = store
+        else:
+            app.state.storage = storage
         if pipeline is None:
             from arq import create_pool
             from arq.connections import RedisSettings
@@ -99,18 +107,15 @@ def create_app(
             tracer = make_tracer(cfg)
             llm = make_llm(cfg, tracer)
             app.state.pipeline = Pipeline(
-                make_sessionmaker(engine), ArqDispatcher(arq_pool), tracer, cfg, llm=llm
+                make_sessionmaker(engine),
+                ArqDispatcher(arq_pool),
+                tracer,
+                cfg,
+                llm=llm,
+                storage=app.state.storage,
             )
         else:
             app.state.pipeline = pipeline
-        if storage is None:
-            store = make_storage(cfg)
-            ensure = getattr(store, "ensure_bucket", None)
-            if ensure is not None:
-                await ensure()
-            app.state.storage = store
-        else:
-            app.state.storage = storage
         try:
             yield
         finally:

@@ -28,15 +28,16 @@ jobs:
         run: make eval
       - name: Harness self test
         run: make eval-selftest
-      - name: Rubric builder evals (real model, about $0.50 to $1.00)
+      - name: Rubric builder evals (real model, kie.ai DeepSeek, about $0.05)
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_PROVIDER: kie
+          KIE_API_KEY: ${{ secrets.KIE_API_KEY }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
           LANGFUSE_BASE_URL: ${{ vars.LANGFUSE_BASE_URL || 'https://jp.cloud.langfuse.com' }}
         run: |
-          if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "::warning::ANTHROPIC_API_KEY secret not set: real model evals NOT run"
+          if [ -z "$KIE_API_KEY" ]; then
+            echo "::warning::KIE_API_KEY secret not set: real model evals NOT run"
             exit 0
           fi
           uv run python -m evals run --suite rubric

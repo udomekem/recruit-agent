@@ -23,8 +23,7 @@ from app.config import Settings, get_settings
 from app.db.session import make_engine, make_sessionmaker
 from app.domain.states import ActorType, CandidateState
 from app.integrations.storage import Storage, make_storage
-from app.llm.client import LLMClient
-from app.llm.providers import AnthropicProvider
+from app.llm.factory import make_llm
 from app.observability.tracing import make_tracer
 from app.workflow.dispatch import ArqDispatcher
 from app.workflow.jobs import JobNotFound
@@ -98,12 +97,7 @@ def create_app(
             engine = make_engine(cfg.database_url)
             arq_pool = await create_pool(RedisSettings.from_dsn(cfg.redis_url))
             tracer = make_tracer(cfg)
-            llm = None
-            if cfg.anthropic_api_key is not None:
-                provider = AnthropicProvider(
-                    cfg.anthropic_api_key.get_secret_value(), cfg.llm_timeout_seconds
-                )
-                llm = LLMClient(provider, tracer, cfg)
+            llm = make_llm(cfg, tracer)
             app.state.pipeline = Pipeline(
                 make_sessionmaker(engine), ArqDispatcher(arq_pool), tracer, cfg, llm=llm
             )

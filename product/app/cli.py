@@ -9,9 +9,9 @@ import sys
 from pydantic import BaseModel, Field
 
 from app.config import get_settings
-from app.llm.client import LLMClient, ModelTier
+from app.llm.client import ModelTier
+from app.llm.factory import make_llm, provider_key_name
 from app.llm.prompts import PromptRef
-from app.llm.providers import AnthropicProvider
 from app.observability.tracing import make_tracer
 
 SMOKE_SENTENCE = "Northwind Talent screens synthetic candidates for a demo role."
@@ -24,18 +24,12 @@ class SmokeOutput(BaseModel):
 
 async def smoke() -> int:
     settings = get_settings()
-    if settings.anthropic_api_key is None:
-        print("ANTHROPIC_API_KEY is not set (product/.env)", file=sys.stderr)
-        return 2
     settings.llm_max_calls_per_process = min(settings.llm_max_calls_per_process, 5)
     tracer = make_tracer(settings)
-    client = LLMClient(
-        AnthropicProvider(
-            settings.anthropic_api_key.get_secret_value(), settings.llm_timeout_seconds
-        ),
-        tracer,
-        settings,
-    )
+    client = make_llm(settings, tracer)
+    if client is None:
+        print(f"{provider_key_name(settings)} is not set (product/.env)", file=sys.stderr)
+        return 2
     trace_id = None
     with tracer.span(
         "smoke",

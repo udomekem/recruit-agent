@@ -107,7 +107,7 @@ recommendation (advance / maybe / reject) with reasons. Ranked list per job.
 
 | Need | Choice | Note |
 |---|---|---|
-| LLM | Claude API (Sonnet for judgement, Haiku for extraction) | Structured outputs (`output_config.format`); forced tool use is rejected by current models (corrected 2026-11-07) |
+| LLM | kie.ai, DeepSeek V4.1 Flash for both tiers (since 2026-11-07); Claude API kept as a switch | Structured outputs (`text.format` json_schema on kie.ai; `output_config.format` on Claude). No server side refusal fallback on kie.ai |
 | Voice | Vapi + Twilio Australian number | AU numbers need a regulatory bundle: apply early, it can take days |
 | Email | Resend or Postmark on a sending domain | SPF/DKIM/DMARC set up |
 | Calendar | Google Calendar API | Free/busy lookup and event with invite |

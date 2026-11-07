@@ -89,7 +89,7 @@ class Pipeline:
             job_id=str(job.id),
             candidate_id="none",
             step="build_rubric",
-            prompt_version="rubric-builder-v1",
+            prompt_version="rubric-builder-v2",
             model=self.settings.model_judgement,
             input_tokens=0,
             output_tokens=0,
@@ -97,7 +97,7 @@ class Pipeline:
         ) as span:
             try:
                 if self.llm is None:
-                    raise LLMError("no language model configured (ANTHROPIC_API_KEY not set)")
+                    raise LLMError("no language model configured (provider key not set)")
                 result = await build_rubric(
                     self.llm,
                     title=job.title,

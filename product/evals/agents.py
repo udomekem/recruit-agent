@@ -52,19 +52,16 @@ def prepare_runtime(agent: str, *, max_calls: int) -> None:
     if agent != "rubric_builder":
         return
     from app.config import get_settings
-    from app.llm.client import LLMClient
-    from app.llm.providers import AnthropicProvider
+    from app.llm.factory import make_llm, provider_key_name
     from app.observability.tracing import make_tracer
     from evals.harness import HarnessError
 
     settings = get_settings().model_copy(update={"llm_max_calls_per_process": max_calls})
-    if settings.anthropic_api_key is None:
-        raise HarnessError("rubric_builder evals need ANTHROPIC_API_KEY (real model)")
     tracer = make_tracer(settings)
-    provider = AnthropicProvider(
-        settings.anthropic_api_key.get_secret_value(), settings.llm_timeout_seconds
-    )
-    _RUNTIME["llm"] = LLMClient(provider, tracer, settings)
+    llm = make_llm(settings, tracer)
+    if llm is None:
+        raise HarnessError(f"rubric_builder evals need {provider_key_name(settings)} (real model)")
+    _RUNTIME["llm"] = llm
     _RUNTIME["tracer"] = tracer
 
 

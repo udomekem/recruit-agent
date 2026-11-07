@@ -16,7 +16,7 @@ from app.domain.guard import find_protected_terms
 from app.llm.client import LLMClient, LLMResult, ModelTier
 from app.llm.prompts import PromptRef
 
-PROMPT = PromptRef("rubric-builder", "v1")
+PROMPT = PromptRef("rubric-builder", "v2")
 EFFORT = "medium"  # phase 1 design Q3: raise only if evals miss the bars
 MAX_CRITERIA = 25
 

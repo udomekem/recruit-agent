@@ -135,8 +135,14 @@ def fence(name: str, content: str) -> str:
     return f'<untrusted_data name="{safe_name}">\n{safe}\n</untrusted_data>'
 
 
+def price_key(model: str) -> str:
+    """kie.ai reports `deepseek-v4.1-flash` for the model requested as `deepseek-v4-1-flash`
+    (found on the first DeepSeek smoke call, which priced at $0). Normalise before lookup."""
+    return model.strip().lower().replace(".", "-")
+
+
 def cost_usd(model: str, input_tokens: int, output_tokens: int) -> float:
-    price_in, price_out = MODEL_PRICES_PER_MTOK.get(model, (0.0, 0.0))
+    price_in, price_out = MODEL_PRICES_PER_MTOK.get(price_key(model), (0.0, 0.0))
     return round(input_tokens / 1e6 * price_in + output_tokens / 1e6 * price_out, 8)
 
 

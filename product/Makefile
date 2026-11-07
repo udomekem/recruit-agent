@@ -46,5 +46,5 @@ smoke:         ## one real LLM call (needs ANTHROPIC_API_KEY); prints the trace 
 
 ci: lint test eval eval-selftest
 
-eval-rubric:   ## rubric builder with the real model (about $0.50 to $1.00)
+eval-rubric:   ## rubric builder with the real model (kie.ai DeepSeek, about $0.05)
 	$(UV) run python -m evals run --suite rubric

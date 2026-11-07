@@ -27,10 +27,15 @@ class Settings(BaseSettings):
     recruiter_token: SecretStr | None = None
     recruiter_id: str = "recruiter-dev"
 
-    # LLM (model ids and tiers per shared/project-config.md)
+    # LLM (provider, model ids and tiers per shared/project-config.md).
+    # Since 2026-11-07: kie.ai with DeepSeek V4.1 Flash for both tiers. Anthropic remains
+    # selectable with LLM_PROVIDER=anthropic and the Claude model ids.
+    llm_provider: Literal["kie", "anthropic"] = "kie"
+    kie_api_key: SecretStr | None = None
+    kie_responses_url: str = "https://api.kie.ai/openai/v1/responses"
     anthropic_api_key: SecretStr | None = None
-    model_extraction: str = "claude-haiku-5-5"
-    model_judgement: str = "claude-sonnet-5-5"
+    model_extraction: str = "deepseek-v4-1-flash"
+    model_judgement: str = "deepseek-v4-1-flash"
     effort_extraction: Effort = "low"
     effort_judgement: Effort = "high"
     llm_timeout_seconds: float = 60.0
@@ -68,6 +73,7 @@ class Settings(BaseSettings):
 
     @field_validator(
         "recruiter_token",
+        "kie_api_key",
         "anthropic_api_key",
         "langfuse_public_key",
         "langfuse_secret_key",
@@ -87,9 +93,12 @@ class Settings(BaseSettings):
         return self.langfuse_public_key is not None and self.langfuse_secret_key is not None
 
 
-# USD per million tokens (input, output). Source: Claude API pricing, cached 2026-10-06.
-# Haiku 5.5 rates apply to prompts up to 100K tokens.
+# USD per million tokens (input, output).
+# kie.ai DeepSeek V4.1 Flash: 24 credits in, 95 credits out per 1M tokens, about $0.12 and
+# $0.475 (https://kie.ai/deepseek-v4-1-flash, checked 2026-11-07; cached input not modelled).
+# Claude: Claude API pricing, cached 2026-10-06 (Haiku rates up to 100K token prompts).
 MODEL_PRICES_PER_MTOK: dict[str, tuple[float, float]] = {
+    "deepseek-v4-1-flash": (0.12, 0.475),
     "claude-haiku-5-5": (0.10, 0.50),
     "claude-sonnet-5-5": (2.00, 10.00),
 }

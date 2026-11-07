@@ -8,7 +8,7 @@ description = "Every PR. No model, no secrets."
 checks = ["dummy-exact-match", "dummy-determinism"]
 
 [suites.rubric]
-description = "Rubric builder with the real model (about $0.50 to $1.00). Nightly and on demand."
+description = "Rubric builder with the real model (kie.ai DeepSeek, about $0.05). Nightly and on demand."
 checks = ["rubric-builder"]
 
 [suites.full]

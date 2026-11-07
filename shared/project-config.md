@@ -8,7 +8,7 @@ Set by `setup`. Changes to decisions here are recorded with a date.
 |------|----------|
 | Backend | Python + FastAPI, Postgres, Redis + arq worker, Alembic |
 | Dashboard | Next.js |
-| LLM | Claude API: `claude-haiku-5-5` for extraction, `claude-sonnet-5-5` for judgement (ids set 2026-11-06; revisit after phase 3 evals) |
+| LLM | kie.ai (OpenAI Responses compatible) with `deepseek-v4-1-flash` for both tiers (Mani's decision 2026-11-07). Was Claude API (`claude-haiku-5-5`, `claude-sonnet-5-5`); still selectable with `LLM_PROVIDER=anthropic`. Revisit per phase evals |
 | Voice | Vapi + Twilio Australian number |
 | Rejection emails | Drafted on Reject, recruiter sends with one click. Auto send is a later toggle |
 | Intake | Own apply page, email forward, bulk upload. No direct Seek or Indeed API |
@@ -34,7 +34,8 @@ Update as accounts are created (list in `references/master-plan.md` section 9).
 
 | Account | Status |
 |---------|--------|
-| Anthropic API key | created, key in product/.env |
+| Anthropic API key | created, key in product/.env; out of credit 2026-11-07, not in use |
+| kie.ai API key | copied from the workspace .env into product/.env 2026-11-07; in use |
 | Twilio + AU number | not started |
 | Vapi | not started |
 | Google Calendar API | not started |

@@ -61,7 +61,7 @@ async def test_valid_output_returns_typed_object_and_metadata() -> None:
     r = await run(client)
     assert r.output == Echo(echo="hello there", word_count=2)  # type: ignore[attr-defined]
     assert (r.prompt_id, r.prompt_version, r.attempts) == ("smoke-echo", "v1", 1)  # type: ignore[attr-defined]
-    assert provider.calls[0]["model"] == "claude-haiku-5-5"
+    assert provider.calls[0]["model"] == client.settings.model_extraction
     assert provider.calls[0]["effort"] == "low"
 
 
@@ -167,16 +167,16 @@ async def test_generation_span_has_required_fields() -> None:
 
 async def test_cost_uses_the_price_table() -> None:
     client, _, _ = make(
-        [ProviderResponse(VALID, "end_turn", 1_000_000, 1_000_000, "claude-haiku-5-5")]
+        [ProviderResponse(VALID, "end_turn", 1_000_000, 1_000_000, "deepseek-v4-1-flash")]
     )
     r = await run(client)
-    assert r.cost_usd == pytest.approx(0.60)  # type: ignore[attr-defined]
+    assert r.cost_usd == pytest.approx(0.595)  # type: ignore[attr-defined]  # $0.12 + $0.475
 
 
 async def test_judgement_tier_uses_the_larger_model() -> None:
     client, provider, _ = make([VALID])
     await client.run(prompt=PROMPT, tier=ModelTier.JUDGEMENT, output_schema=Echo, instructions="x")
-    assert provider.calls[0]["model"] == "claude-sonnet-5-5"
+    assert provider.calls[0]["model"] == client.settings.model_judgement
 
 
 async def test_unknown_prompt_version_fails_loudly() -> None:
@@ -188,3 +188,14 @@ async def test_unknown_prompt_version_fails_loudly() -> None:
             output_schema=Echo,
             instructions="x",
         )
+
+
+def test_cost_matches_provider_model_name_variants() -> None:
+    """Regression: kie.ai returned `deepseek-v4.1-flash` and the cost came out as $0."""
+    from app.config import MODEL_PRICES_PER_MTOK
+    from app.llm.client import cost_usd
+
+    assert cost_usd("deepseek-v4.1-flash", 1_000_000, 0) == pytest.approx(0.12)
+    assert cost_usd("deepseek-v4-1-flash", 0, 1_000_000) == pytest.approx(0.475)
+    for model in MODEL_PRICES_PER_MTOK:
+        assert cost_usd(model, 1000, 1000) > 0, model

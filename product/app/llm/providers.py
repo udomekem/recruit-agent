@@ -1,8 +1,11 @@
 """Model providers. The client talks to a `Provider`; tests use `FakeProvider`.
 
-AnthropicProvider uses structured outputs (`output_config.format` with a JSON schema).
-Forced tool use is not used: current models reject `tool_choice` any/tool.
-SDK retries are off (`max_retries=0`) so the client owns the retry policy.
+- KieProvider (default since 2026-11-07): kie.ai's OpenAI Responses compatible endpoint,
+  DeepSeek V4.1 Flash. Structured output via `text.format` json_schema.
+- AnthropicProvider: Claude API with structured outputs (`output_config.format`). Forced
+  tool use is not used: current models reject `tool_choice` any/tool. Kept so the
+  provider can be switched back with LLM_PROVIDER=anthropic.
+Provider side retries are off so the client owns the retry policy.
 """
 
 from __future__ import annotations
@@ -154,3 +157,102 @@ class FakeProvider:
         if isinstance(item, ProviderResponse):
             return item
         return ProviderResponse(item, "end_turn", input_tokens=100, output_tokens=20, model=model)
+
+
+class KieProvider:
+    """kie.ai Responses endpoint (OpenAI Responses shape).
+
+    Model page: https://kie.ai/deepseek-v4-1-flash (endpoint, `text.format` json_schema,
+    `reasoning.effort`). `instructions` is always set: on kie.ai's codex endpoint an
+    unset value means a default coding agent persona is applied (workspace ask-gpt notes).
+    kie.ai can report errors as HTTP 200 with a `code` in the body, so both are checked.
+    There is no server side refusal fallback; `fallback` is accepted and ignored.
+    """
+
+    def __init__(
+        self, api_key: str, timeout_seconds: float, url: str, transport: Any = None
+    ) -> None:
+        import httpx
+
+        self._url = url
+        self._client = httpx.AsyncClient(
+            timeout=timeout_seconds,
+            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+            transport=transport,  # tests pass httpx.MockTransport
+        )
+
+    @staticmethod
+    def _input(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        out = []
+        for m in messages:
+            kind = "output_text" if m["role"] == "assistant" else "input_text"
+            out.append({"role": m["role"], "content": [{"type": kind, "text": str(m["content"])}]})
+        return out
+
+    @staticmethod
+    def _raise_for(status: int, detail: str) -> None:
+        if status in (401, 403):
+            raise ProviderAuthError(f"{status}: {detail}")
+        if status == 429 or status >= 500:
+            raise ProviderTransientError(f"{status}: {detail}")
+        raise ProviderRequestError(f"{status}: {detail}")
+
+    async def complete(
+        self,
+        *,
+        model: str,
+        system: str,
+        messages: list[dict[str, Any]],
+        json_schema: dict[str, Any],
+        max_tokens: int,
+        effort: str,
+        fallback: bool = False,
+    ) -> ProviderResponse:
+        import httpx
+
+        payload = {
+            "model": model,
+            "stream": False,
+            "instructions": system,
+            "input": self._input(messages),
+            "text": {"format": {"type": "json_schema", "name": "output", "schema": json_schema}},
+            "reasoning": {"effort": effort},
+        }
+        try:
+            r = await self._client.post(self._url, json=payload)
+        except (httpx.TimeoutException, httpx.TransportError) as exc:
+            raise ProviderTransientError(f"kie.ai unreachable: {type(exc).__name__}") from exc
+        if r.status_code != 200:
+            self._raise_for(r.status_code, r.text[:300])
+        try:
+            body = r.json()
+        except ValueError as exc:
+            raise ProviderTransientError("kie.ai returned a non JSON body") from exc
+        code = body.get("code")
+        if isinstance(code, int) and code != 200 and not body.get("output"):
+            self._raise_for(code, str(body.get("msg") or body.get("message") or body)[:300])
+        if body.get("error"):
+            err = body["error"]
+            msg = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+            raise ProviderRequestError(f"kie.ai error: {msg[:300]}")
+
+        text_parts: list[str] = []
+        refused = False
+        for item in body.get("output") or []:
+            if item.get("type") != "message":
+                continue
+            for chunk in item.get("content") or []:
+                if chunk.get("type") == "refusal":
+                    refused = True
+                elif chunk.get("type") in ("output_text", "text") and chunk.get("text"):
+                    text_parts.append(chunk["text"])
+        usage = body.get("usage") or {}
+        status = body.get("status")
+        stop = "refusal" if refused else ("max_tokens" if status == "incomplete" else "end_turn")
+        return ProviderResponse(
+            text="".join(text_parts) or None,
+            stop_reason=stop,
+            input_tokens=int(usage.get("input_tokens") or 0),
+            output_tokens=int(usage.get("output_tokens") or 0),
+            model=str(body.get("model") or model),
+        )

@@ -47,4 +47,5 @@ def test_blank_secrets_from_env_example_count_as_unset(tmp_path: Path) -> None:
 
 def test_model_tiers_match_project_config() -> None:
     s = Settings(_env_file=None)  # type: ignore[call-arg]
-    assert (s.model_extraction, s.model_judgement) == ("claude-haiku-5-5", "claude-sonnet-5-5")
+    assert s.llm_provider == "kie"
+    assert (s.model_extraction, s.model_judgement) == ("deepseek-v4-1-flash", "deepseek-v4-1-flash")

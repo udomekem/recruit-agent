@@ -77,7 +77,7 @@ async def test_create_job_builds_rubric_and_adds_standard_questions(ok: Any) -> 
     ]
     assert d["questions"][0]["knockout_rule"]["hard_fail"] is True
     assert len(d["rubrics"]) == 1 and d["rubrics"][0]["source"] == "ai"
-    assert d["rubrics"][0]["prompt_version"] == "v1" and d["rubrics"][0]["model"]
+    assert d["rubrics"][0]["prompt_version"] == "v2" and d["rubrics"][0]["model"]
     assert [a["transition_id"] for a in d["audit"]] == ["J1", "J2"]
 
 
@@ -91,7 +91,7 @@ async def test_judgement_tier_uses_fallback_and_medium_effort(
     assert p.llm is not None
     call = p.llm.provider.calls[0]  # type: ignore[attr-defined]
     assert call["fallback"] is True and call["effort"] == "medium"
-    assert call["model"] == "claude-sonnet-5-5"
+    assert call["model"] == settings.model_judgement
 
 
 async def test_approve_opens_job_and_locks_rubric(ok: Any) -> None:

@@ -123,3 +123,10 @@ failing cases are listed for review. An LLM judge is not trusted until phase 5 c
 | Q5 | Eval labels | I draft 15 synthetic job ads and rubrics; Mani reviews and approves them before they count |
 
 Decision 2026-11-07: all five defaults accepted.
+
+## Amendment 2026-11-07 (after approval)
+
+Mani switched the language model provider to kie.ai with DeepSeek V4.1 Flash for both
+tiers (the Anthropic account ran out of credit). Effects on this brief: the rubric builder
+runs on `deepseek-v4-1-flash`, not `claude-sonnet-5-5`; there is no server side refusal
+fallback on kie.ai (a refusal still moves the job to review). Bars unchanged.

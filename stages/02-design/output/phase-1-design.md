@@ -286,3 +286,13 @@ erasure.
 | Q4 | Bulk upload consent | Recruiter attests the candidate consented on the original platform, plus the source name; stored as `recruiter_attested` |
 
 Decision 2026-11-07: all four defaults accepted.
+
+## Amendment 2026-11-07 (after approval)
+
+- Provider: kie.ai Responses endpoint, `deepseek-v4-1-flash`, structured output through
+  `text.format` json_schema, `reasoning.effort` medium. Anthropic kept behind
+  `LLM_PROVIDER=anthropic`. One factory (`app/llm/factory.py`) builds the client.
+- Prompt `rubric-builder` v2 (v1 kept): location, arrangement and salary are not criteria
+  (they are screening questions), and evidence must come from the ad text only. Reason:
+  on DeepSeek, ad 013 produced an "onsite Darwin" criterion quoting the trusted location
+  line, which failed the evidence check in 2 of 3 runs.

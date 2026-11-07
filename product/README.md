@@ -7,7 +7,7 @@ Setup guide: `../stages/03-build/references/dev-environment-setup.md`.
 ## First run
 
 ```bash
-cp .env.example .env        # then fill in keys (ANTHROPIC_API_KEY, LANGFUSE_*, RECRUITER_TOKEN)
+cp .env.example .env        # then fill in keys (KIE_API_KEY, LANGFUSE_*, RECRUITER_TOKEN, S3/MinIO)
 uv sync
 make up                     # API, worker, Postgres, Redis (migrations run on API start)
 curl localhost:8000/health  # {"status":"ok","database":"ok","redis":"ok"}
@@ -23,7 +23,7 @@ curl localhost:8000/health  # {"status":"ok","database":"ok","redis":"ok"}
 | `make lint` | ruff, format check, mypy strict |
 | `make eval` | Fast eval suite; exit 0 pass, 1 a bar failed, 2 harness error |
 | `make eval-selftest` | Planted regression must fail the gate (proves the gate works) |
-| `make smoke` | One real Haiku call through the LLM client; prints the Langfuse trace URL |
+| `make smoke` | One real model call (kie.ai DeepSeek by default) through the LLM client; prints the Langfuse trace URL |
 | `make migrate` | Apply database migrations |
 
 ## Try the phase 0 pipeline

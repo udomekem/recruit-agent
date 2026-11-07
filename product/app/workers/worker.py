@@ -17,8 +17,7 @@ from app.config import get_settings
 from app.db.session import make_engine, make_sessionmaker
 from app.domain.jobs import JobState
 from app.domain.states import CandidateState
-from app.llm.client import LLMClient
-from app.llm.providers import AnthropicProvider
+from app.llm.factory import make_llm
 from app.observability.tracing import make_tracer
 from app.workflow.dispatch import ArqDispatcher
 from app.workflow.pipeline import Pipeline
@@ -30,12 +29,7 @@ async def startup(ctx: dict[str, Any]) -> None:
     engine = make_engine(_settings.database_url)
     ctx["engine"] = engine
     tracer = make_tracer(_settings)
-    llm = None
-    if _settings.anthropic_api_key is not None:
-        provider = AnthropicProvider(
-            _settings.anthropic_api_key.get_secret_value(), _settings.llm_timeout_seconds
-        )
-        llm = LLMClient(provider, tracer, _settings)
+    llm = make_llm(_settings, tracer)
     ctx["pipeline"] = Pipeline(
         make_sessionmaker(engine), ArqDispatcher(ctx["redis"]), tracer, _settings, llm=llm
     )

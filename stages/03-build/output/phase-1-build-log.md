@@ -76,14 +76,38 @@ Built 2026-11-07 in `~/code/recruit-agent`. Inputs: `phase-1-brief.md`, `phase-1
 - The app uses the local MinIO root credentials (`S3_ACCESS_KEY`). A scoped storage user is
   a hardening item (phase 9).
 
+## Provider switch to kie.ai DeepSeek (2026-11-07, Mani's decision)
+
+| Change | Files |
+|--------|-------|
+| `KieProvider` (Responses shape, json_schema output, effort, error codes inside HTTP 200, refusal and incomplete handling) | `app/llm/providers.py` |
+| Provider factory, `LLM_PROVIDER` setting (default `kie`), DeepSeek model ids and prices | `app/llm/factory.py`, `app/config.py`, `.env.example` |
+| API, worker, smoke command and eval runtime use the factory | `app/api/main.py`, `app/workers/worker.py`, `app/cli.py`, `evals/agents.py` |
+| Prompt `rubric-builder` v2 | `app/prompts/rubric-builder/v2.md` |
+| Nightly job uses `KIE_API_KEY` | `.github/workflows/nightly.yml` |
+| Tests: mocked kie.ai endpoint (shape, error classes, 200-with-error, refusal), cost name variants | `tests/test_kie_provider.py`, `tests/test_llm_client.py` |
+
+Found and fixed: kie.ai reports the model as `deepseek-v4.1-flash` for a request for
+`deepseek-v4-1-flash`, so the first smoke call priced at $0. Model names are normalised
+before the price lookup, with a regression test.
+
+| Real run (2026-11-07) | Result |
+|-----------------------|--------|
+| `make smoke` on DeepSeek | correct echo and word count, 1 attempt, about 2 s, $0.000076 |
+| Rubric suite, prompt v1, 45 builds | recall 0.93, precision 0.95, valid 0.956, consistency 0.94, protected 0, flagged 0.78, injection 0, $0.0011 per job; total $0.048 |
+| Rubric suite, prompt v2, 45 builds | recall 0.986, precision 0.986, valid 1.0, consistency 0.99, protected 0, flagged 1.0, injection 0, $0.0012 per job; total $0.053 |
+
+All eight bars are met on the numbers with v2; the gate stays FAIL until the labels are
+reviewed (draft label rule).
+
 ## Blocked / waiting on Mani
 
-1. **Anthropic credit.** Top up the account (and set a spend limit), then the real model
-   rubric suite can run (about $0.50 to $1.00 per run).
+1. ~~Anthropic credit~~: no longer needed; the provider is now kie.ai (key already in
+   `.env`). Keep a spend cap on the kie.ai account.
 2. **Label review.** `evals/datasets/rubric-v1-review.md`; then
    `uv run python -m evals approve rubric-v1 --by Mani` (all, or `--cases ...`). Until then
    the gate cannot pass, by design.
-3. **GitHub secrets** for the nightly real model run: `ANTHROPIC_API_KEY` (required),
+3. **GitHub secrets** for the nightly real model run: `KIE_API_KEY` (required),
    `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` (optional). Without the key the nightly
    job warns and skips the real model evals.
 

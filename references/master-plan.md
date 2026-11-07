@@ -58,6 +58,10 @@ APPLIED
 Every transition is a row in the audit log. Failed steps move to a NEEDS_REVIEW
 state rather than silently stopping.
 
+A recruiter can move any non-terminal candidate to WITHDRAWN (candidate pulls out,
+or refuses consent on a call). Terminal states: REJECTION_SENT, INTERVIEW_BOOKED,
+WITHDRAWN. (Added 2026-11-07, phase 0 design.)
+
 ---
 
 ## 3. Scoring design

@@ -8,7 +8,7 @@ Set by `setup`. Changes to decisions here are recorded with a date.
 |------|----------|
 | Backend | Python + FastAPI, Postgres, Redis + arq worker, Alembic |
 | Dashboard | Next.js |
-| LLM | Claude API: smaller model for extraction, larger for judgement (exact model ids set in phase 0) |
+| LLM | Claude API: `claude-haiku-5-5` for extraction, `claude-sonnet-5-5` for judgement (ids set 2026-11-06; revisit after phase 3 evals) |
 | Voice | Vapi + Twilio Australian number |
 | Rejection emails | Drafted on Reject, recruiter sends with one click. Auto send is a later toggle |
 | Intake | Own apply page, email forward, bulk upload. No direct Seek or Indeed API |
@@ -19,7 +19,7 @@ Set by `setup`. Changes to decisions here are recorded with a date.
 | Setting | Value |
 |---------|-------|
 | Repo name | recruit-agent |
-| Repo visibility | public |
+| Repo visibility | private while building, public at phase 0 ship (changed 2026-11-06) |
 | Agent name | Sam |
 | Agent voice notes | warm, brief, professional Australian English |
 | Demo company | Northwind Talent (fictional) |
@@ -40,4 +40,4 @@ Update as accounts are created (list in `references/master-plan.md` section 9).
 | Google Calendar API | not started |
 | Email provider | not started |
 | Langfuse | account + keys created (JP region), keys in product/.env |
-| GitHub repo | not started |
+| GitHub repo | created, private: github.com/udomekem/recruit-agent |

@@ -8,7 +8,7 @@ PDFs, 2 image only PDFs, plus 4 with stated protected attributes and 6 with refe
 3 runs each. Labels are `rule`: exact by construction from the source data, so the gate
 is not blocked on a human label review (unlike phase 1).
 
-**Status: gate PASS, awaiting Mani's confirmation at the stage 04 checkpoint.**
+**Status: gate PASS, confirmed by Mani 2026-11-08.**
 
 ## Commands run
 
@@ -60,4 +60,4 @@ Langfuse experiment: https://jp.cloud.langfuse.com/project/cmw3jw4qd000mad0em81d
 
 ## Gate
 
-**PASS.** To be confirmed by Mani. Stage 05 (readiness, demo, post brief) follows.
+**PASS**, confirmed by Mani at the stage 04 checkpoint, 2026-11-08. Stage 05 next.

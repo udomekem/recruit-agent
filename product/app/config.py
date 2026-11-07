@@ -8,7 +8,7 @@ is switched on explicitly.
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Effort = Literal["low", "medium", "high", "xhigh", "max"]
@@ -55,6 +55,20 @@ class Settings(BaseSettings):
     email_sending_enabled: bool = False
     phone_calls_enabled: bool = False
     calendar_booking_enabled: bool = False
+
+    @field_validator(
+        "recruiter_token",
+        "anthropic_api_key",
+        "langfuse_public_key",
+        "langfuse_secret_key",
+        mode="before",
+    )
+    @classmethod
+    def _blank_secret_is_unset(cls, value: object) -> object:
+        # `cp .env.example .env` leaves `KEY=` lines; a blank secret means "not set".
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
+        return value
 
     @property
     def tracing_configured(self) -> bool:

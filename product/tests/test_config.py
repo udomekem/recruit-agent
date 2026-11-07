@@ -31,6 +31,18 @@ def test_tracing_off_without_keys() -> None:
     assert isinstance(make_tracer(s), NoopTracer)
 
 
+def test_blank_secrets_from_env_example_count_as_unset(tmp_path: Path) -> None:
+    """Found by the clean clone check: `cp .env.example .env` left `KEY=` lines that read
+    as empty secrets, which switched tracing on with blank keys."""
+    env = tmp_path / ".env"
+    env.write_text(ENV_EXAMPLE.read_text())
+    s = Settings(_env_file=str(env))  # type: ignore[call-arg]
+    assert s.anthropic_api_key is None and s.recruiter_token is None
+    assert s.langfuse_public_key is None and s.langfuse_secret_key is None
+    assert not s.tracing_configured
+    assert isinstance(make_tracer(s), NoopTracer)
+
+
 def test_model_tiers_match_project_config() -> None:
     s = Settings(_env_file=None)  # type: ignore[call-arg]
     assert (s.model_extraction, s.model_judgement) == ("claude-haiku-5-5", "claude-sonnet-5-5")

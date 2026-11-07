@@ -19,7 +19,7 @@ Set by `setup`. Changes to decisions here are recorded with a date.
 | Setting | Value |
 |---------|-------|
 | Repo name | recruit-agent |
-| Repo visibility | private while building, public at phase 0 ship (changed 2026-11-06) |
+| Repo visibility | public since 2026-11-07 (phase 0 ship) |
 | Agent name | Sam |
 | Agent voice notes | warm, brief, professional Australian English |
 | Demo company | Northwind Talent (fictional) |
@@ -40,4 +40,4 @@ Update as accounts are created (list in `references/master-plan.md` section 9).
 | Google Calendar API | not started |
 | Email provider | not started |
 | Langfuse | account + keys created (JP region), keys in product/.env |
-| GitHub repo | created, private: github.com/udomekem/recruit-agent |
+| GitHub repo | created, public: github.com/udomekem/recruit-agent |

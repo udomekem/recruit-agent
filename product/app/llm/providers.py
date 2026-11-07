@@ -13,6 +13,8 @@ from typing import Any, Protocol, cast
 
 import anthropic
 
+FALLBACK_BETA = "server-side-fallback-2026-07-01"
+
 
 @dataclass(frozen=True)
 class ProviderResponse:
@@ -45,6 +47,7 @@ class Provider(Protocol):
         json_schema: dict[str, Any],
         max_tokens: int,
         effort: str,
+        fallback: bool = False,
     ) -> ProviderResponse: ...
 
 
@@ -63,6 +66,7 @@ class AnthropicProvider:
         json_schema: dict[str, Any],
         max_tokens: int,
         effort: str,
+        fallback: bool = False,
     ) -> ProviderResponse:
         try:
             # Our messages and output_config are plain dicts; the SDK accepts them at runtime.
@@ -70,13 +74,26 @@ class AnthropicProvider:
                 "effort": effort,
                 "format": {"type": "json_schema", "schema": json_schema},
             }
-            resp = await self._client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
-                system=system,
-                messages=cast(Any, messages),
-                output_config=output_config,
-            )
+            if fallback:
+                # Server side refusal fallback (Claude API): if the model declines, the API
+                # re-runs the request on a fallback model chosen for the refusal category.
+                resp: Any = await self._client.beta.messages.create(
+                    model=model,
+                    max_tokens=max_tokens,
+                    system=system,
+                    messages=cast(Any, messages),
+                    output_config=output_config,
+                    betas=[FALLBACK_BETA],
+                    fallbacks=cast(Any, "default"),
+                )
+            else:
+                resp = await self._client.messages.create(
+                    model=model,
+                    max_tokens=max_tokens,
+                    system=system,
+                    messages=cast(Any, messages),
+                    output_config=output_config,
+                )
         except anthropic.AuthenticationError as exc:
             raise ProviderAuthError(str(exc)) from exc
         except anthropic.PermissionDeniedError as exc:
@@ -117,6 +134,7 @@ class FakeProvider:
         json_schema: dict[str, Any],
         max_tokens: int,
         effort: str,
+        fallback: bool = False,
     ) -> ProviderResponse:
         self.calls.append(
             {
@@ -125,6 +143,7 @@ class FakeProvider:
                 "messages": [dict(m) for m in messages],
                 "json_schema": json_schema,
                 "effort": effort,
+                "fallback": fallback,
             }
         )
         if not self._script:

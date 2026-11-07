@@ -1,7 +1,7 @@
 # Thin wrappers over Python entry points. Run from product/ inside Ubuntu (WSL2).
 UV ?= uv
 
-.PHONY: help up down services logs migrate test lint typecheck eval eval-full eval-selftest smoke ci
+.PHONY: help up down services logs migrate test lint typecheck eval eval-full eval-rubric eval-selftest smoke ci
 
 help:
 	@grep -E '^[a-z-]+:' Makefile | cut -d: -f1
@@ -45,3 +45,6 @@ smoke:         ## one real LLM call (needs ANTHROPIC_API_KEY); prints the trace 
 	$(UV) run python -m app.cli smoke
 
 ci: lint test eval eval-selftest
+
+eval-rubric:   ## rubric builder with the real model (about $0.50 to $1.00)
+	$(UV) run python -m evals run --suite rubric

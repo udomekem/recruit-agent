@@ -17,6 +17,7 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, TypeVar
@@ -160,8 +161,15 @@ class LLMClient:
         instructions: str,
         untrusted: dict[str, str] | None = None,
         candidate_id: str | None = None,
+        check: Callable[[T], None] | None = None,
+        effort: str | None = None,
+        trace_fields: dict[str, Any] | None = None,
     ) -> LLMResult[T]:
-        model, effort = self._model_and_effort(tier)
+        """`check` runs after schema validation; a ValueError from it counts as invalid
+        output (retried with the message). `effort` overrides the tier default."""
+        model, tier_effort = self._model_and_effort(tier)
+        effort = effort or tier_effort
+        fallback = tier is ModelTier.JUDGEMENT
         system = f"{load_prompt(prompt)}\n\n{DATA_RULES}"
         blocks = "\n\n".join(fence(k, v) for k, v in (untrusted or {}).items())
         user = instructions if not blocks else f"{instructions}\n\n{blocks}"
@@ -182,11 +190,13 @@ class LLMClient:
             input_tokens=0,
             output_tokens=0,
             cost_usd=0.0,
+            effort=effort,
+            **(trace_fields or {}),
         ) as span:
             max_attempts = 1 + self.settings.llm_max_invalid_retries
             last_error = ""
             for attempt in range(1, max_attempts + 1):
-                resp = await self._call(model, system, messages, schema, effort)
+                resp = await self._call(model, system, messages, schema, effort, fallback)
                 tokens_in += resp.input_tokens
                 tokens_out += resp.output_tokens
                 used_model = resp.model
@@ -204,6 +214,8 @@ class LLMClient:
                     if resp.text is None:
                         raise ValueError(f"no text block (stop_reason={resp.stop_reason})")
                     output = output_schema.model_validate(json.loads(resp.text))
+                    if check is not None:
+                        check(output)
                 except (ValueError, ValidationError) as exc:
                     last_error = str(exc)[:2000]
                     span.update(outcome="invalid", last_error=last_error)
@@ -241,6 +253,7 @@ class LLMClient:
         messages: list[dict[str, Any]],
         schema: dict[str, Any],
         effort: str,
+        fallback: bool = False,
     ) -> ProviderResponse:
         retries = self.settings.llm_max_provider_retries
         for attempt in range(retries + 1):
@@ -257,6 +270,7 @@ class LLMClient:
                     json_schema=schema,
                     max_tokens=self.settings.llm_max_tokens,
                     effort=effort,
+                    fallback=fallback,
                 )
             except ProviderAuthError as exc:
                 raise LLMAuthError(f"model provider rejected the API key: {exc}") from exc

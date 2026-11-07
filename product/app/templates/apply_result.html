@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Application received · {{ company }}{% endblock %}
+{% block body %}
+<div class="card">
+  {% if duplicate %}
+    <h1>We already have your application</h1>
+    <p>You have already applied for {{ job.title }}. We have kept your first application, so
+      there is nothing more to do. If you need to change something, reply to the email from
+      {{ company }}.</p>
+  {% else %}
+    <h1>Thank you, your application is in</h1>
+    <p>We have received your application for {{ job.title }}. A person on the hiring team will
+      review it. If you are shortlisted, you may get a short call from our AI assistant, which
+      will introduce itself as an AI and ask before recording.</p>
+  {% endif %}
+</div>
+{% endblock %}

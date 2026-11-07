@@ -16,6 +16,7 @@ from sqlalchemy.engine import make_url
 
 from app.config import Settings
 from app.db.session import SessionMaker, make_engine, make_sessionmaker
+from app.integrations.storage import MemoryStorage
 from app.observability.tracing import RecordingTracer
 from app.workflow.dispatch import InlineDispatcher
 from app.workflow.pipeline import Pipeline
@@ -60,6 +61,7 @@ def settings(migrated_db: str) -> Settings:
         recruiter_token=TEST_TOKEN,  # type: ignore[arg-type]
         step_retry_backoff_seconds=0.0,
         step_timeout_seconds=2.0,
+        storage_backend="memory",
     )
 
 
@@ -67,9 +69,19 @@ def settings(migrated_db: str) -> Settings:
 async def sessions(settings: Settings) -> AsyncIterator[SessionMaker]:
     engine = make_engine(settings.database_url)
     async with engine.begin() as conn:
-        await conn.execute(text("TRUNCATE audit_events, candidates CASCADE"))
+        await conn.execute(
+            text(
+                "TRUNCATE answers, audit_events, candidates, rubrics, screening_questions, "
+                "job_audit_events, jobs CASCADE"
+            )
+        )
     yield make_sessionmaker(engine)
     await engine.dispose()
+
+
+@pytest.fixture
+def storage() -> MemoryStorage:
+    return MemoryStorage()
 
 
 @pytest.fixture

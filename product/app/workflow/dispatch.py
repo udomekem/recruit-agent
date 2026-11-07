@@ -7,6 +7,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from app.domain.jobs import JobState
 from app.domain.states import CandidateState
 
 
@@ -22,15 +23,38 @@ class AdvanceJob:
         return f"advance:{self.candidate_id}:v{self.expected_version}"
 
 
+@dataclass(frozen=True)
+class RubricJob:
+    job_id: uuid.UUID
+    expected_state: JobState
+    expected_version: int
+
+    @property
+    def queue_id(self) -> str:
+        return f"build_rubric:{self.job_id}:v{self.expected_version}"
+
+
+QueuedJob = AdvanceJob | RubricJob
+
+
 class Dispatcher(Protocol):
-    async def enqueue(self, job: AdvanceJob) -> None: ...
+    async def enqueue(self, job: QueuedJob) -> None: ...
 
 
 class ArqDispatcher:
     def __init__(self, pool: Any) -> None:
         self._pool = pool
 
-    async def enqueue(self, job: AdvanceJob) -> None:
+    async def enqueue(self, job: QueuedJob) -> None:
+        if isinstance(job, RubricJob):
+            await self._pool.enqueue_job(
+                "build_rubric",
+                str(job.job_id),
+                job.expected_state.value,
+                job.expected_version,
+                _job_id=job.queue_id,
+            )
+            return
         await self._pool.enqueue_job(
             "advance",
             str(job.candidate_id),
@@ -45,9 +69,9 @@ class InlineDispatcher:
     """Collects jobs in memory; tests drain them in-process. Ignores defers."""
 
     def __init__(self) -> None:
-        self.queue: list[AdvanceJob] = []
-        self.history: list[AdvanceJob] = []
+        self.queue: list[QueuedJob] = []
+        self.history: list[QueuedJob] = []
 
-    async def enqueue(self, job: AdvanceJob) -> None:
+    async def enqueue(self, job: QueuedJob) -> None:
         self.queue.append(job)
         self.history.append(job)

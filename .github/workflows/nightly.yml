@@ -10,6 +10,8 @@ permissions:
 
 jobs:
   full-evals:
+    # Only on this repository's main branch: forks and pull requests never get the key.
+    if: github.repository == 'udomekem/recruit-agent' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -22,10 +24,22 @@ jobs:
       - name: Install uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - run: uv sync --frozen
-      - name: Full eval suite
-        run: make eval-full
+      - name: Model free suite
+        run: make eval
       - name: Harness self test
         run: make eval-selftest
+      - name: Rubric builder evals (real model, about $0.50 to $1.00)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_BASE_URL: ${{ vars.LANGFUSE_BASE_URL || 'https://jp.cloud.langfuse.com' }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::ANTHROPIC_API_KEY secret not set: real model evals NOT run"
+            exit 0
+          fi
+          uv run python -m evals run --suite rubric
       - uses: actions/upload-artifact@v4
         if: always()
         with:

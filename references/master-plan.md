@@ -107,7 +107,7 @@ recommendation (advance / maybe / reject) with reasons. Ranked list per job.
 
 | Need | Choice | Note |
 |---|---|---|
-| LLM | Claude API (Sonnet for judgement, Haiku for extraction) | Structured outputs via tool use |
+| LLM | Claude API (Sonnet for judgement, Haiku for extraction) | Structured outputs (`output_config.format`); forced tool use is rejected by current models (corrected 2026-11-07) |
 | Voice | Vapi + Twilio Australian number | AU numbers need a regulatory bundle: apply early, it can take days |
 | Email | Resend or Postmark on a sending domain | SPF/DKIM/DMARC set up |
 | Calendar | Google Calendar API | Free/busy lookup and event with invite |
@@ -232,8 +232,9 @@ Keys go in `.env` (never committed). `.env.example` lists every variable.
 
 ## 10. Open questions (decide by the phase that needs them)
 
-- Phase 1: the five confirm questions. Default proposal: right to work, expected
-  salary, notice period, location / work arrangement, and a current role check.
+- Phase 1 (decided 2026-11-07): the five confirm questions are right to work in Australia
+  (knockout), expected salary (against the band), notice period, location and work
+  arrangement fit, and current or most recent role.
 - Phase 3: score weights, the shortlist threshold, and final eval pass bars.
 - Phase 6: agent voice and name; which hours to call.
 - Phase 10: hosting (Railway or Fly for API, Vercel for dashboard).

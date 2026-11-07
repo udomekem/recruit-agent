@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Apply: {{ job.title }} · {{ company }}{% endblock %}
+{% block body %}
+<div class="card">
+  <h1>{{ job.title }}</h1>
+  <p class="meta">{{ company }} · {{ job.location }} · {{ job.work_arrangement }} ·
+    ${{ "{:,}".format(job.salary_min) }} to ${{ "{:,}".format(job.salary_max) }} a year</p>
+</div>
+
+<form class="card" method="post" enctype="multipart/form-data" novalidate>
+  {% if errors %}<div class="banner" role="alert">Please fix the highlighted fields.</div>{% endif %}
+
+  <h2>Your details</h2>
+  <label for="full_name">Full name</label>
+  <input id="full_name" name="full_name" type="text" autocomplete="name" value="{{ values.get('full_name', '') }}" required>
+  {% if errors.full_name %}<p class="error">{{ errors.full_name }}</p>{% endif %}
+
+  <label for="email">Email</label>
+  <input id="email" name="email" type="email" autocomplete="email" value="{{ values.get('email', '') }}" required>
+  {% if errors.email %}<p class="error">{{ errors.email }}</p>{% endif %}
+
+  <label for="phone">Phone (for a screening call if shortlisted)</label>
+  <input id="phone" name="phone" type="tel" autocomplete="tel" value="{{ values.get('phone', '') }}">
+  {% if errors.phone %}<p class="error">{{ errors.phone }}</p>{% endif %}
+
+  <h2 style="margin-top:28px">A few questions</h2>
+  {% for q in questions %}
+    {% set name = "q_" ~ q.key %}
+    <label for="{{ name }}">{{ q.prompt }}{% if not q.required %} <span class="small">(optional)</span>{% endif %}</label>
+    {% if q.answer_type == "yes_no" %}
+      <select id="{{ name }}" name="{{ name }}">
+        <option value="">Choose</option>
+        <option value="yes" {% if values.get(name) == "yes" %}selected{% endif %}>Yes</option>
+        <option value="no" {% if values.get(name) == "no" %}selected{% endif %}>No</option>
+      </select>
+    {% elif q.answer_type == "choice" %}
+      <select id="{{ name }}" name="{{ name }}">
+        <option value="">Choose</option>
+        {% for c in q.choices %}<option value="{{ c }}" {% if values.get(name) == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+    {% elif q.answer_type == "number" %}
+      <input id="{{ name }}" name="{{ name }}" type="number" min="0" step="1000" value="{{ values.get(name, '') }}">
+    {% else %}
+      <textarea id="{{ name }}" name="{{ name }}" maxlength="2000">{{ values.get(name, '') }}</textarea>
+    {% endif %}
+    {% if errors.get(name) %}<p class="error">{{ errors.get(name) }}</p>{% endif %}
+  {% endfor %}
+
+  <h2 style="margin-top:28px">Your CV</h2>
+  <label for="cv">PDF or Word (.docx), up to {{ max_mb }} MB</label>
+  <input id="cv" name="cv" type="file" accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
+  {% if errors.cv %}<p class="error">{{ errors.cv }}</p>{% endif %}
+
+  <h2 style="margin-top:28px">How we use your information</h2>
+  <ul class="notice small">{% for p in notice %}<li>{{ p }}</li>{% endfor %}</ul>
+  <label class="choice"><input type="checkbox" name="consent" value="yes" {% if values.get('consent') == 'yes' %}checked{% endif %}> {{ consent_label }}</label>
+  {% if errors.consent %}<p class="error">{{ errors.consent }}</p>{% endif %}
+  <p class="small">Notice version {{ notice_version }}.</p>
+
+  <button type="submit">Submit application</button>
+</form>
+{% endblock %}

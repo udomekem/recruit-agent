@@ -56,11 +56,23 @@ class Settings(BaseSettings):
     phone_calls_enabled: bool = False
     calendar_booking_enabled: bool = False
 
+    # Intake (phase 1)
+    company_name: str = "Northwind Talent (demo)"
+    cv_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1024)
+    storage_backend: Literal["s3", "memory"] = "s3"
+    s3_endpoint_url: str = "http://localhost:9000"  # MinIO locally; empty for AWS S3
+    s3_bucket: str = "recruit-cvs"
+    s3_region: str = "ap-southeast-2"
+    s3_access_key: SecretStr | None = None
+    s3_secret_key: SecretStr | None = None
+
     @field_validator(
         "recruiter_token",
         "anthropic_api_key",
         "langfuse_public_key",
         "langfuse_secret_key",
+        "s3_access_key",
+        "s3_secret_key",
         mode="before",
     )
     @classmethod

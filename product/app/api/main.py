@@ -1,7 +1,8 @@
 """FastAPI app. Recruiter decisions are API calls only; the worker never makes them.
 
-`create_app` takes optional pre-built parts so tests can inject an in-memory dispatcher
-and a recording tracer. Without them, the lifespan builds the real ones.
+`create_app` takes optional pre-built parts so tests can inject an in-memory dispatcher,
+a recording tracer and memory storage. Without them, the lifespan builds the real ones.
+Phase 1 adds job, rubric, apply page, bulk upload and erasure routes (jobs_api, intake_api).
 """
 
 import hmac
@@ -17,11 +18,16 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
+from app.api import intake_api, jobs_api
 from app.config import Settings, get_settings
 from app.db.session import make_engine, make_sessionmaker
 from app.domain.states import ActorType, CandidateState
+from app.integrations.storage import Storage, make_storage
+from app.llm.client import LLMClient
+from app.llm.providers import AnthropicProvider
 from app.observability.tracing import make_tracer
 from app.workflow.dispatch import ArqDispatcher
+from app.workflow.jobs import JobNotFound
 from app.workflow.machine import (
     CandidateNotFound,
     Snapshot,
@@ -74,7 +80,11 @@ def _out(c: Snapshot) -> CandidateOut:
     return CandidateOut(**c.__dict__)
 
 
-def create_app(settings: Settings | None = None, pipeline: Pipeline | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    pipeline: Pipeline | None = None,
+    storage: Storage | None = None,
+) -> FastAPI:
     cfg = settings or get_settings()
 
     @asynccontextmanager
@@ -87,11 +97,26 @@ def create_app(settings: Settings | None = None, pipeline: Pipeline | None = Non
 
             engine = make_engine(cfg.database_url)
             arq_pool = await create_pool(RedisSettings.from_dsn(cfg.redis_url))
+            tracer = make_tracer(cfg)
+            llm = None
+            if cfg.anthropic_api_key is not None:
+                provider = AnthropicProvider(
+                    cfg.anthropic_api_key.get_secret_value(), cfg.llm_timeout_seconds
+                )
+                llm = LLMClient(provider, tracer, cfg)
             app.state.pipeline = Pipeline(
-                make_sessionmaker(engine), ArqDispatcher(arq_pool), make_tracer(cfg), cfg
+                make_sessionmaker(engine), ArqDispatcher(arq_pool), tracer, cfg, llm=llm
             )
         else:
             app.state.pipeline = pipeline
+        if storage is None:
+            store = make_storage(cfg)
+            ensure = getattr(store, "ensure_bucket", None)
+            if ensure is not None:
+                await ensure()
+            app.state.storage = store
+        else:
+            app.state.storage = storage
         try:
             yield
         finally:
@@ -104,6 +129,8 @@ def create_app(settings: Settings | None = None, pipeline: Pipeline | None = Non
     app = FastAPI(title="Recruit Agent", version="0.0.1", lifespan=lifespan)
     if pipeline is not None:  # injected (tests): available even without running the lifespan
         app.state.pipeline = pipeline
+    if storage is not None:
+        app.state.storage = storage
     bearer = HTTPBearer(auto_error=False)
 
     def recruiter(
@@ -118,8 +145,20 @@ def create_app(settings: Settings | None = None, pipeline: Pipeline | None = Non
     def pl(request: Request) -> Pipeline:
         return request.app.state.pipeline  # type: ignore[no-any-return]
 
+    def st(request: Request) -> Storage:
+        return request.app.state.storage  # type: ignore[no-any-return]
+
     Recruiter = Annotated[str, Depends(recruiter)]
     Pl = Annotated[Pipeline, Depends(pl)]
+    Store = Annotated[Storage, Depends(st)]
+
+    @app.exception_handler(JobNotFound)
+    async def _job_missing(_: Request, exc: JobNotFound) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"error": "not_found", "detail": str(exc)})
+
+    @app.exception_handler(ValueError)
+    async def _invalid(_: Request, exc: ValueError) -> JSONResponse:
+        return JSONResponse(status_code=422, content={"error": "invalid", "detail": str(exc)})
 
     @app.exception_handler(TransitionRefused)
     async def _refused(_: Request, exc: TransitionRefused) -> JSONResponse:
@@ -162,6 +201,10 @@ def create_app(settings: Settings | None = None, pipeline: Pipeline | None = Non
 
     @app.post("/candidates", status_code=201)
     async def create(body: CreateCandidate, actor: Recruiter, p: Pl) -> CandidateOut:
+        """Test candidate with no job or personal data (phase 0 path). Off in production:
+        real applications come through the intake adapter."""
+        if cfg.environment == "production":
+            raise HTTPException(status_code=404, detail="not available")
         c = await create_candidate(p.sessions, display_label=body.display_label, actor_id=actor)
         await p.schedule(c)
         return _out(c)
@@ -240,6 +283,9 @@ def create_app(settings: Settings | None = None, pipeline: Pipeline | None = Non
         candidate_id: uuid.UUID, body: Decision, actor: Recruiter, p: Pl
     ) -> CandidateOut:
         return await decide(p, candidate_id, actor, body, S.WITHDRAWN)
+
+    jobs_api.register(app, Recruiter, Pl)
+    intake_api.register(app, cfg, Recruiter, Pl, Store)
 
     _ = (
         shortlist,

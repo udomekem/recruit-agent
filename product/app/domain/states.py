@@ -31,6 +31,7 @@ class CandidateState(StrEnum):
 class ActorType(StrEnum):
     SYSTEM = "system"
     RECRUITER = "recruiter"
+    CANDIDATE = "candidate"
 
 
 S = CandidateState
@@ -50,7 +51,7 @@ class Transition:
     trigger: str
 
 
-SYS, REC = ActorType.SYSTEM, ActorType.RECRUITER
+SYS, REC, CAN = ActorType.SYSTEM, ActorType.RECRUITER, ActorType.CANDIDATE
 
 _EXPLICIT: list[Transition] = [
     Transition("T1", None, S.APPLIED, REC, "create candidate"),
@@ -73,6 +74,7 @@ _EXPLICIT: list[Transition] = [
     Transition("T18", S.BOOKING_CALL_DONE, S.INTERVIEW_BOOKED, SYS, "book slot step"),
     Transition("T20", S.NEEDS_REVIEW, RETURN_TO_SAVED, REC, "resolve: retry"),
     Transition("T21", S.NEEDS_REVIEW, S.REJECTED, REC, "resolve: reject"),
+    Transition("T23", None, S.APPLIED, CAN, "apply via the apply page"),
 ]
 
 _HAS_EXPLICIT_REVIEW = {t.from_state for t in _EXPLICIT if t.to_state == S.NEEDS_REVIEW}

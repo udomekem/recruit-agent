@@ -1,0 +1,43 @@
+{
+  "suite": "fast",
+  "run_id": "20261107T062935Z",
+  "started_at": "2026-11-07T06:29:35.098023+00:00",
+  "git_sha": "e0daa3d",
+  "git_dirty": true,
+  "expect_gate": "PASS",
+  "gate": "PASS",
+  "outcome": "PASS",
+  "checks": [
+    {
+      "name": "dummy-exact-match",
+      "dataset": "dummy-v1",
+      "agent": "dummy",
+      "agent_version": "v1",
+      "metric": "exact_match",
+      "threshold": 1.0,
+      "value": 1.0,
+      "runs": 1,
+      "spread": 0.0,
+      "status": "PASS",
+      "failing_cases": []
+    },
+    {
+      "name": "dummy-determinism",
+      "dataset": "dummy-v1",
+      "agent": "dummy",
+      "agent_version": "v1",
+      "metric": "determinism",
+      "threshold": 1.0,
+      "value": 1.0,
+      "runs": 3,
+      "spread": 0.0,
+      "status": "PASS",
+      "failing_cases": []
+    }
+  ],
+  "baseline_comparison": [],
+  "langfuse_runs": [
+    "https://jp.cloud.langfuse.com/project/cmw3jw4qd000mad0em81dw2so/experiments/results?baseline=1f57fcc29cc80481",
+    "https://jp.cloud.langfuse.com/project/cmw3jw4qd000mad0em81dw2so/experiments/results?baseline=61189803c8623bfc"
+  ]
+}

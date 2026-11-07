@@ -1,0 +1,10 @@
+{"id": "dummy-001", "agent": "dummy", "tags": ["plain"], "input": {"answer": "Yes"}, "expected": {"label": "eligible"}, "label_source": "hand", "notes": "simplest yes"}
+{"id": "dummy-002", "agent": "dummy", "tags": ["plain"], "input": {"answer": "No"}, "expected": {"label": "not_eligible"}, "label_source": "hand", "notes": "simplest no"}
+{"id": "dummy-003", "agent": "dummy", "tags": ["citizen"], "input": {"answer": "Australian citizen"}, "expected": {"label": "eligible"}, "label_source": "hand", "notes": "status named"}
+{"id": "dummy-004", "agent": "dummy", "tags": ["resident"], "input": {"answer": "Permanent resident"}, "expected": {"label": "eligible"}, "label_source": "hand", "notes": "PR counts as eligible"}
+{"id": "dummy-005", "agent": "dummy", "tags": ["sponsorship"], "input": {"answer": "Need sponsorship"}, "expected": {"label": "not_eligible"}, "label_source": "hand", "notes": "needs a visa"}
+{"id": "dummy-006", "agent": "dummy", "tags": ["spelling", "whitespace"], "input": {"answer": "  YES, Citizen  "}, "expected": {"label": "eligible"}, "label_source": "hand", "notes": "tricky case and spacing"}
+{"id": "dummy-007", "agent": "dummy", "tags": ["spelling", "punctuation"], "input": {"answer": "Permanent  Resident."}, "expected": {"label": "eligible"}, "label_source": "hand", "notes": "double space and full stop"}
+{"id": "dummy-008", "agent": "dummy", "tags": ["empty", "edge"], "input": {"answer": ""}, "expected": {"label": "unknown"}, "label_source": "hand", "notes": "empty answer must not guess"}
+{"id": "dummy-009", "agent": "dummy", "tags": ["ambiguous", "edge"], "input": {"answer": "PR pending"}, "expected": {"label": "unknown"}, "label_source": "hand", "notes": "pending status is not a yes"}
+{"id": "dummy-010", "agent": "dummy", "tags": ["sponsorship"], "input": {"answer": "No, I need sponsorship"}, "expected": {"label": "not_eligible"}, "label_source": "hand", "notes": "full sentence no"}

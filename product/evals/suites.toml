@@ -1,0 +1,40 @@
+# Eval suites and checks. Thresholds live here, not in code.
+# A check runs one agent version over one dataset and compares one metric to a threshold.
+# Changing a threshold needs a user decision recorded in the phase brief.
+
+[suites.fast]
+description = "Every PR"
+checks = ["dummy-exact-match", "dummy-determinism"]
+
+[suites.full]
+description = "Nightly and before release (grows with later phases)"
+checks = ["dummy-exact-match", "dummy-determinism"]
+
+[suites.selftest]
+description = "Harness self test: the planted regression must make the gate fail"
+checks = ["dummy-regressed-exact-match"]
+expect_gate = "FAIL"
+
+[checks.dummy-exact-match]
+dataset = "dummy-v1"
+agent = "dummy"
+agent_version = "v1"
+metric = "exact_match"
+threshold = 1.0
+runs = 1
+
+[checks.dummy-determinism]
+dataset = "dummy-v1"
+agent = "dummy"
+agent_version = "v1"
+metric = "determinism"
+threshold = 1.0
+runs = 3
+
+[checks.dummy-regressed-exact-match]
+dataset = "dummy-v1"
+agent = "dummy"
+agent_version = "v1-regressed"
+metric = "exact_match"
+threshold = 1.0
+runs = 1

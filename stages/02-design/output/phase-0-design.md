@@ -259,4 +259,4 @@ See Q4.
 | Q3 | Phase 0 recruiter identity is a single token from config; real accounts in phase 4 | As stated |
 | Q4 | Dev environment: WSL2 Ubuntu + Docker Desktop (needs installs, about 30 minutes and a restart) | Yes |
 
-Decision 2026-11-07: all four defaults accepted.
+Decision 2026-11-07: all four defaults accepted. Q4 amended the same day: Docker Engine inside Ubuntu instead of Docker Desktop, because of low disk space on C:.

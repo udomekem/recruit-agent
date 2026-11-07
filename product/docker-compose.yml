@@ -1,0 +1,59 @@
+name: recruit-agent
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql+psycopg://recruit:recruit@postgres:5432/recruit
+  REDIS_URL: redis://redis:6379/0
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: recruit
+      POSTGRES_PASSWORD: recruit
+      POSTGRES_DB: recruit
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recruit -d recruit"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    environment: *app-env
+    command: sh -c "alembic upgrade head && uvicorn app.api.main:app --host 0.0.0.0 --port 8000"
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  worker:
+    build: .
+    env_file:
+      - path: .env
+        required: false
+    environment: *app-env
+    command: arq app.workers.worker.WorkerSettings
+    depends_on:
+      api: {condition: service_healthy}
+
+volumes:
+  pgdata:

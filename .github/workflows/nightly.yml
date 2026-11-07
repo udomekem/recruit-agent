@@ -1,0 +1,33 @@
+name: Nightly evals
+
+on:
+  schedule:
+    - cron: "0 15 * * *"  # 02:00 Sydney (AEDT, UTC+11)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  full-evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: product
+    env:
+      ENVIRONMENT: ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: uv sync --frozen
+      - name: Full eval suite
+        run: make eval-full
+      - name: Harness self test
+        run: make eval-selftest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: nightly-eval-reports
+          path: product/evals/reports/

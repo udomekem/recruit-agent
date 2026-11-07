@@ -1,0 +1,1 @@
+"""Recruit Agent application package."""

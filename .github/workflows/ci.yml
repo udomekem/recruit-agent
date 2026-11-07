@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: product
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: recruit
+          POSTGRES_PASSWORD: recruit
+          POSTGRES_DB: recruit
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U recruit -d recruit"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      # No secrets in CI: fake model, no-op tracer.
+      ENVIRONMENT: ci
+      DATABASE_URL: postgresql+psycopg://recruit:recruit@localhost:5432/recruit
+      TEST_DATABASE_URL: postgresql+psycopg://recruit:recruit@localhost:5432/recruit_test
+      REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Lint and type check
+        run: make lint
+
+      - name: Migrations up, down, up on a fresh database
+        run: |
+          uv run alembic upgrade head
+          uv run alembic downgrade base
+          uv run alembic upgrade head
+
+      - name: Tests
+        run: make test
+
+      - name: Fast eval suite (gate)
+        run: make eval
+
+      - name: Harness self test (planted regression must fail the gate)
+        run: make eval-selftest
+
+      - name: Upload eval reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-reports
+          path: product/evals/reports/
+          if-no-files-found: warn
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan full history for secrets
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
+            git /repo --redact --verbose --exit-code 1
+      - name: No .env committed
+        run: |
+          if git ls-files | grep -E '(^|/)\.env$'; then echo "a .env file is tracked"; exit 1; fi

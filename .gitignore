@@ -6,3 +6,8 @@ node_modules/
 product/evals/reports/*
 !product/evals/reports/baseline*
 *.log
+
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+product/evals/reports/latest-*

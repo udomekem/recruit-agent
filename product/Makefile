@@ -1,12 +1,15 @@
 # Thin wrappers over Python entry points. Run from product/ inside Ubuntu (WSL2).
 UV ?= uv
 
-.PHONY: help up down services logs migrate test lint typecheck eval eval-full eval-rubric eval-cv eval-selftest smoke ci
+.PHONY: help local-env up down services logs migrate test lint typecheck eval eval-full eval-rubric eval-cv eval-selftest smoke ci
 
 help:
 	@grep -E '^[a-z-]+:' Makefile | cut -d: -f1
 
-up:            ## start API, worker, Postgres, Redis
+local-env:     ## once, after cp .env.example .env: generate local-only secrets (token, MinIO)
+	python3 scripts/init_local_env.py
+
+up:            ## start API, worker, Postgres, Redis, MinIO
 	docker compose up -d --build --wait
 
 down:

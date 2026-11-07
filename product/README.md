@@ -1,17 +1,22 @@
 # product/
 
-The Recruit Agent application. Phase 0: foundations and the eval harness, with stub
-steps instead of real agents. Run everything from Ubuntu (WSL2) in this folder.
+The Recruit Agent application: jobs and AI drafted rubrics (phase 1), an apply page with
+encrypted CV storage, and CV parsing with redaction (phase 2). Scoring is still a stub.
+Run everything from Ubuntu (WSL2) in this folder.
 Setup guide: `../stages/03-build/references/dev-environment-setup.md`.
 
 ## First run
 
 ```bash
-cp .env.example .env        # then fill in keys (KIE_API_KEY, LANGFUSE_*, RECRUITER_TOKEN, S3/MinIO)
+cp .env.example .env
+make local-env              # generates local-only secrets: recruiter token, MinIO login and key
+# add KIE_API_KEY (model calls) and, optionally, LANGFUSE_* keys to .env
 uv sync
-make up                     # API, worker, Postgres, Redis (migrations run on API start)
+make up                     # API, worker, Postgres, Redis, MinIO (migrations run on API start)
 curl localhost:8000/health  # {"status":"ok","database":"ok","redis":"ok"}
 ```
+
+Tests and the fast evals need no API key: `make services && make test && make eval`.
 
 ## Commands
 

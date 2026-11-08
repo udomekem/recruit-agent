@@ -5,6 +5,7 @@ Knockout rules are stored as data in phase 1 and evaluated in phase 3.
 
 from __future__ import annotations
 
+import re
 from enum import StrEnum
 from typing import Any, Literal
 
@@ -93,6 +94,38 @@ def standard_questions(location: str, work_arrangement: str) -> list[QuestionSpe
     ]
 
 
+_NUM = r"\$?\s*(\d[\d,]*(?:\.\d+)?)\s*(k)?"
+_RANGE_SEP = r"\s*(?:-|–|to)\s*"
+
+
+def _check_number(value: float) -> int | float:
+    if value < 0 or value > 10_000_000:
+        raise ValueError("number out of range")
+    return int(value) if value.is_integer() else value
+
+
+def _to_number(digits: str, k: str | None) -> int | float:
+    value = float(digits.replace(",", ""))
+    return _check_number(value * 1000 if k else value)
+
+
+def _number_or_range(raw: str) -> int | float | dict[str, Any]:
+    """ "95000", "$95,000", "95k" give a number; "$95k to $110k" gives a range
+    {min, max, text} (phase 3 design Q3). Anything else ("negotiable") is refused."""
+    s = raw.strip().lower().replace("aud", "").strip()
+    one = re.fullmatch(_NUM, s)
+    if one:
+        return _to_number(one.group(1), one.group(2))
+    rng = re.fullmatch(_NUM + _RANGE_SEP + _NUM, s)
+    if rng:
+        lo = _to_number(rng.group(1), rng.group(2) or rng.group(4))  # "95 to 110k"
+        hi = _to_number(rng.group(3), rng.group(4))
+        if lo > hi:
+            raise ValueError("put the lower number first")
+        return {"min": lo, "max": hi, "text": raw.strip()[:60]}
+    raise ValueError("answer with a number")
+
+
 def coerce_answer(spec_type: str, choices: list[str] | None, raw: Any) -> Any:
     """Turn a submitted value into the question's type, or raise ValueError."""
     t = AnswerType(spec_type)
@@ -108,13 +141,9 @@ def coerce_answer(spec_type: str, choices: list[str] | None, raw: Any) -> Any:
             return False
         raise ValueError("answer yes or no")
     if t is AnswerType.NUMBER:
-        try:
-            value = float(str(raw).replace(",", "").replace("$", "").strip())
-        except ValueError as exc:
-            raise ValueError("answer with a number") from exc
-        if value < 0 or value > 10_000_000:
-            raise ValueError("number out of range")
-        return int(value) if value.is_integer() else value
+        if isinstance(raw, (int, float)) and not isinstance(raw, bool):
+            return _check_number(float(raw))
+        return _number_or_range(str(raw))
     if t is AnswerType.CHOICE:
         s = str(raw).strip()
         if choices is None or s not in choices:

@@ -18,7 +18,7 @@ import uuid
 
 from app.agents.rubric_builder import build_rubric
 from app.config import Settings
-from app.db.models import CvParse
+from app.db.models import CvParse, Score
 from app.db.session import SessionMaker
 from app.domain.jobs import JobState
 from app.domain.states import SYSTEM_STEPS, ActorType, CandidateState
@@ -26,6 +26,7 @@ from app.intake.parse import run_parse
 from app.integrations.storage import Storage
 from app.llm.client import LLMClient, LLMError
 from app.observability.tracing import Tracer
+from app.scoring.step import run_score
 from app.workflow.dispatch import AdvanceJob, Dispatcher, InlineDispatcher, RubricJob
 from app.workflow.jobs import JobNotFound, JobSnapshot, get_job, save_rubric, transition_job
 from app.workflow.machine import (
@@ -183,6 +184,10 @@ class Pipeline:
             parsed = await self._parse_real(cand)
             if parsed != "stub":
                 return parsed  # type: ignore[return-value]
+        if step == "score":
+            scored = await self._score_real(cand)
+            if scored != "stub":
+                return scored  # type: ignore[return-value]
 
         with self.tracer.span(
             f"step:{step}",
@@ -271,6 +276,54 @@ class Pipeline:
                     to_state=decision.to_state,
                     actor_type=ActorType.SYSTEM,
                     actor_id="worker:parse",
+                    reason=decision.reason,
+                    expected_state=cand.state,
+                    expected_version=cand.state_version,
+                    trace_id=self.tracer.current_trace_id(),
+                    extra=add_row,
+                )
+            except StaleTransition:
+                span.update(outcome="stale")
+                return None
+        await self.schedule(moved)
+        return moved
+
+    async def _score_real(self, cand: Snapshot) -> Snapshot | None | str:
+        """Phase 3 score. Returns "stub" to fall back to the stub (test candidates)."""
+        with self.tracer.span(
+            "step:score",
+            candidate_id=str(cand.id),
+            step="score",
+            from_state=cand.state.value,
+            prompt_version="cv-scorer-v2",
+            model=self.settings.model_judgement,
+            input_tokens=0,
+            output_tokens=0,
+            cost_usd=0.0,
+        ) as span:
+            decision = await run_score(
+                self.sessions,
+                self.llm,
+                cand.id,
+                production=self.settings.environment == "production",
+            )
+            if decision.use_stub:
+                span.update(outcome="stub")
+                return "stub"
+            span.update(**decision.trace)
+            row = decision.row
+
+            def add_row(s: object, c: object) -> None:
+                if row is not None:
+                    s.add(Score(candidate_id=cand.id, **row))  # type: ignore[attr-defined]
+
+            try:
+                moved = await apply_transition(
+                    self.sessions,
+                    candidate_id=cand.id,
+                    to_state=decision.to_state,
+                    actor_type=ActorType.SYSTEM,
+                    actor_id="worker:score",
                     reason=decision.reason,
                     expected_state=cand.state,
                     expected_version=cand.state_version,

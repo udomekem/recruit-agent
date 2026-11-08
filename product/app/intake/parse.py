@@ -92,10 +92,13 @@ async def run_parse(
     final = final_redact(pre, [(sp.text, sp.kind) for sp in result.output.personal_spans])
     profile = result.output.model_dump(mode="json", exclude={"personal_spans"})
     counts = dict(final.counts)
+    redactions = sum(counts.values())
+    if ex.hidden_chars:
+        counts["hidden_text"] = ex.hidden_chars  # removed before redaction (phase 3 design 5)
     return ParseDecision(
         S.PARSED,
         f"cv parsed: {len(result.output.work_history)} roles, {len(result.output.skills)} skills, "
-        f"{sum(counts.values())} redactions",
+        f"{redactions} redactions",
         row={
             "status": "parsed",
             "text_layer": True,
@@ -117,6 +120,7 @@ async def run_parse(
             "cost_usd": result.cost_usd,
             "attempts": result.attempts,
             "roles": len(result.output.work_history),
-            "redactions": sum(counts.values()),
+            "redactions": redactions,
+            "hidden_chars": ex.hidden_chars,
         },
     )

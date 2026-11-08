@@ -149,8 +149,9 @@ def determinism(cases: list[Case], runs: Runs) -> tuple[float, float, list[dict[
 def metrics() -> dict[str, MetricFn]:
     from evals.cv_metrics import METRICS as CV
     from evals.rubric_metrics import METRICS as RUBRIC
+    from evals.score_metrics import METRICS as SCORE
 
-    return {"exact_match": exact_match, "determinism": determinism, **RUBRIC, **CV}
+    return {"exact_match": exact_match, "determinism": determinism, **RUBRIC, **CV, **SCORE}
 
 
 # ---- running -------------------------------------------------------------------------
@@ -208,7 +209,7 @@ def run_check(name: str, spec: dict[str, Any], report: Report | None = None) -> 
     if wrong:
         raise HarnessError(f"check {name}: cases {wrong} belong to another agent")
     fn = get_agent(agent, version)
-    prepare_runtime(agent, max_calls=int(spec.get("max_calls", 200)))
+    prepare_runtime(agent, max_calls=int(spec.get("max_calls", 200)), version=version)
     try:
         runs = asyncio.run(_run_agent(fn, cases, n_runs, int(spec.get("concurrency", 1))))
     except HarnessError:
@@ -443,6 +444,10 @@ def push_to_langfuse(report: Report, settings: Any) -> list[str]:
                 )
             if _agent == "cv_parser":
                 return Evaluation(name="field_accuracy", value=cv_item_score(case, output))
+            if _agent in ("cv_scorer", "answer_scorer"):
+                from evals.score_metrics import item_score as score_item
+
+                return Evaluation(name="agreement", value=score_item(case, output))
             return Evaluation(name="must_have_recall", value=item_score(case, output))
 
         result = client.get_dataset(ds_name).run_experiment(

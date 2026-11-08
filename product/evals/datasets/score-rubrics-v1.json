@@ -1,0 +1,213 @@
+{
+ "as_of": [
+  2026,
+  11
+ ],
+ "analyst": {
+  "title": "Data Analyst",
+  "salary_max": 120000,
+  "criteria": [
+   {
+    "id": "years",
+    "kind": "must_have",
+    "category": "experience",
+    "text": "At least 3 years working as a data analyst",
+    "weight": 5,
+    "years": 3,
+    "evidence": "At least 3 years working as a data analyst"
+   },
+   {
+    "id": "sql",
+    "kind": "must_have",
+    "category": "skill",
+    "text": "Writes SQL queries for analysis and reporting",
+    "weight": 5,
+    "years": null,
+    "evidence": "Writes SQL queries for analysis and reporting"
+   },
+   {
+    "id": "python",
+    "kind": "must_have",
+    "category": "skill",
+    "text": "Uses Python (for example pandas) for data analysis",
+    "weight": 4,
+    "years": null,
+    "evidence": "Uses Python (for example pandas) for data analysis"
+   },
+   {
+    "id": "powerbi",
+    "kind": "nice_to_have",
+    "category": "skill",
+    "text": "Builds dashboards in Power BI",
+    "weight": 2,
+    "years": null,
+    "evidence": "Builds dashboards in Power BI"
+   },
+   {
+    "id": "stakeholders",
+    "kind": "nice_to_have",
+    "category": "skill",
+    "text": "Presents findings to senior stakeholders",
+    "weight": 2,
+    "years": null,
+    "evidence": "Presents findings to senior stakeholders"
+   },
+   {
+    "id": "degree",
+    "kind": "nice_to_have",
+    "category": "skill",
+    "text": "Degree in statistics, mathematics, computer science or a related quantitative field",
+    "weight": 1,
+    "years": null,
+    "evidence": "Degree in statistics, mathematics, computer science or a related quantitative field"
+   },
+   {
+    "id": "cloud",
+    "kind": "nice_to_have",
+    "category": "skill",
+    "text": "Experience with a cloud data warehouse such as Snowflake or BigQuery",
+    "weight": 1,
+    "years": null,
+    "evidence": "Experience with a cloud data warehouse such as Snowflake or BigQuery"
+   }
+  ]
+ },
+ "nurse": {
+  "title": "Registered Nurse, Surgical Ward",
+  "salary_max": 105000,
+  "criteria": [
+   {
+    "id": "years",
+    "kind": "must_have",
+    "category": "experience",
+    "text": "At least 2 years of acute care nursing experience",
+    "weight": 5,
+    "years": 2,
+    "evidence": "At least 2 years of acute care nursing experience"
+   },
+   {
+    "id": "ahpra",
+    "kind": "must_have",
+    "category": "skill",
+    "text": "Current AHPRA registration as a Registered Nurse",
+    "weight": 5,
+    "years": null,
+    "evidence": "Current AHPRA registration as a Registered Nurse"
+   },
+   {
+    "id": "medication",
+    "kind": "must_have",
+    "category": "skill",
+    "text": "Administers medications safely, including S8 drugs",
+    "weight": 4,
+    "years": null,
+    "evidence": "Administers medications safely, including S8 drugs"
+   },
+   {
+    "id": "als",
+    "kind": "nice_to_have",
+    "category": "skill",
+    "text": "Advanced Life Support certification",
+    "weight": 2,
+    "years": null,
+    "evidence": "Advanced Life Support certification"
+   },
+   {
+    "id": "emr",
+    "kind": "nice_to_have",
+    "category": "skill",
+    "text": "Uses electronic medical records such as Cerner or Epic",
+    "weight": 2,
+    "years": null,
+    "evidence": "Uses electronic medical records such as Cerner or Epic"
+   },
+   {
+    "id": "triage",
+    "kind": "nice_to_have",
+    "category": "skill",
+    "text": "Emergency department triage experience",
+    "weight": 1,
+    "years": null,
+    "evidence": "Emergency department triage experience"
+   },
+   {
+    "id": "wwcc",
+    "kind": "nice_to_have",
+    "category": "skill",
+    "text": "Working with Children Check",
+    "weight": 1,
+    "years": null,
+    "evidence": "Working with Children Check"
+   }
+  ]
+ },
+ "site": {
+  "title": "Site Supervisor (Construction)",
+  "salary_max": 140000,
+  "criteria": [
+   {
+    "id": "years",
+    "kind": "must_have",
+    "category": "experience",
+    "text": "At least 5 years supervising construction sites",
+    "weight": 5,
+    "years": 5,
+    "evidence": "At least 5 years supervising construction sites"
+   },
+   {
+    "id": "whitecard",
+    "kind": "must_have",
+    "category": "skill",
+    "text": "Construction induction card (White Card)",
+    "weight": 5,
+    "years": null,
+    "evidence": "Construction induction card (White Card)"
+   },
+   {
+    "id": "whs",
+    "kind": "must_have",
+    "category": "skill",
+    "text": "Runs WHS on site: inductions, SWMS and incident reporting",
+    "weight": 4,
+    "years": null,
+    "evidence": "Runs WHS on site: inductions, SWMS and incident reporting"
+   },
+   {
+    "id": "licence",
+    "kind": "nice_to_have",
+    "category": "skill",
+    "text": "Current driver's licence",
+    "weight": 2,
+    "years": null,
+    "evidence": "Current driver's licence"
+   },
+   {
+    "id": "firstaid",
+    "kind": "nice_to_have",
+    "category": "skill",
+    "text": "First aid certificate",
+    "weight": 2,
+    "years": null,
+    "evidence": "First aid certificate"
+   },
+   {
+    "id": "procore",
+    "kind": "nice_to_have",
+    "category": "skill",
+    "text": "Project software such as Procore",
+    "weight": 1,
+    "years": null,
+    "evidence": "Project software such as Procore"
+   },
+   {
+    "id": "cert4",
+    "kind": "nice_to_have",
+    "category": "skill",
+    "text": "Certificate IV in Building and Construction",
+    "weight": 1,
+    "years": null,
+    "evidence": "Certificate IV in Building and Construction"
+   }
+  ]
+ }
+}

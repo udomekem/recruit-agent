@@ -25,7 +25,7 @@ from app.observability.tracing import RecordingTracer
 from app.workflow.dispatch import InlineDispatcher
 from app.workflow.pipeline import Pipeline
 from tests.conftest import TEST_TOKEN
-from tests.phase1_helpers import JOB, RUBRIC_JSON, answers
+from tests.phase1_helpers import JOB, RUBRIC_JSON, SCORE_JSON, answers
 
 pytestmark = pytest.mark.integration
 AUTH = {"Authorization": f"Bearer {TEST_TOKEN}"}
@@ -49,9 +49,9 @@ def cv_docx(extra: str = "") -> bytes:
         "Mar 2021 to Present",
         "Skills",
         "SQL, Tableau, Python",
+        extra,  # before Referees: that section is removed by redaction
         "Referees",
         "Desmond Varga, 0491 570 299",
-        extra,
     ]:
         if line:
             d.add_paragraph(line)
@@ -105,8 +105,14 @@ class Env:
             job_id,
         )
 
-    async def apply(self, cv: bytes, filename: str = "cv.docx") -> str:
-        data = {"full_name": NAME, "email": EMAIL, "phone": PHONE, "consent": "yes", **answers()}
+    async def apply(self, cv: bytes, filename: str = "cv.docx", **ans: str) -> str:
+        data = {
+            "full_name": NAME,
+            "email": EMAIL,
+            "phone": PHONE,
+            "consent": "yes",
+            **answers(**ans),
+        }
         r = await self.c.post(f"/apply/{self.job_id}", data=data, files={"cv": (filename, cv, "x")})
         assert r.status_code == 201, r.text
         async with self.p.sessions() as s:
@@ -144,14 +150,14 @@ async def make_env(
 
 @pytest.fixture
 async def env(sessions: SessionMaker, settings: Settings) -> AsyncIterator[Env]:
-    async for e in make_env(sessions, settings, [PROFILE]):
+    async for e in make_env(sessions, settings, [PROFILE, SCORE_JSON]):
         yield e
 
 
 async def test_parse_stores_redacted_copy_and_profile(env: Env) -> None:
     cid = await env.apply(cv_docx())
     await env.p.drain()
-    assert (await env.state(cid))["state"] == "SCORED"  # parsed for real, then stub scoring
+    assert (await env.state(cid))["state"] == "SCORED"  # parsed, then scored, for real
     r = await env.c.get(f"/candidates/{cid}/parse", headers=AUTH)
     assert r.status_code == 200
     body = r.json()

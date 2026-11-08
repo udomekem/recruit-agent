@@ -13,7 +13,7 @@ jobs:
     # Only on this repository's main branch: forks and pull requests never get the key.
     if: github.repository == 'udomekem/recruit-agent' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: product
@@ -28,7 +28,7 @@ jobs:
         run: make eval
       - name: Harness self test
         run: make eval-selftest
-      - name: Real model evals, rubric builder and CV parser (kie.ai DeepSeek, about $0.11)
+      - name: Real model evals, rubric builder, CV parser and scorer (kie.ai DeepSeek, about $0.50)
         env:
           LLM_PROVIDER: kie
           KIE_API_KEY: ${{ secrets.KIE_API_KEY }}
@@ -43,6 +43,7 @@ jobs:
           status=0
           uv run python -m evals run --suite rubric || status=$?
           uv run python -m evals run --suite cv || status=$?
+          uv run python -m evals run --suite score || status=$?
           exit $status
       - uses: actions/upload-artifact@v4
         if: always()

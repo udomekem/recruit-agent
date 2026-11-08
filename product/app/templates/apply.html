@@ -39,7 +39,7 @@
         {% for c in q.choices %}<option value="{{ c }}" {% if values.get(name) == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
       </select>
     {% elif q.answer_type == "number" %}
-      <input id="{{ name }}" name="{{ name }}" type="number" min="0" step="1000" value="{{ values.get(name, '') }}">
+      <input id="{{ name }}" name="{{ name }}" type="text" inputmode="numeric" maxlength="60" placeholder="e.g. 95000, 95k or 95k to 110k" value="{{ values.get(name, '') }}">
     {% else %}
       <textarea id="{{ name }}" name="{{ name }}" maxlength="2000">{{ values.get(name, '') }}</textarea>
     {% endif %}

@@ -205,6 +205,41 @@ class CvParse(Base):
     )
 
 
+class Score(Base):
+    """Phase 3. One row per candidate per rubric version (rule 11: versions stored).
+    Total and band are computed by code; the model only judges each criterion.
+    Erasure clears judgements, reasons and answer values; numbers and versions stay."""
+
+    __tablename__ = "scores"
+    __table_args__ = (UniqueConstraint("candidate_id", "rubric_id", name="uq_score_rubric"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    candidate_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidates.id"), nullable=False, index=True
+    )
+    rubric_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("rubrics.id"), nullable=False)
+    rubric_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    cv_parse_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("cv_parses.id", ondelete="SET NULL"), nullable=True
+    )  # the parse is deleted on erasure
+    judgements: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    answer_results: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    total: Mapped[float] = mapped_column(nullable=False)
+    band: Mapped[str] = mapped_column(String(10), nullable=False)  # advance | maybe | reject
+    reasons: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    flags: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    injection_suspected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    prompt_id: Mapped[str] = mapped_column(String(60), nullable=False)
+    prompt_version: Mapped[str] = mapped_column(String(20), nullable=False)
+    model: Mapped[str] = mapped_column(String(60), nullable=False)
+    cost_usd: Mapped[float | None] = mapped_column(nullable=True)
+    attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    erased: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
     __table_args__ = (

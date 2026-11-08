@@ -67,6 +67,46 @@ RUBRIC: dict[str, Any] = {
 }
 RUBRIC_JSON = json.dumps(RUBRIC)
 
+
+def score_json(**verdicts: str) -> str:
+    """A scripted cv-scorer reply for the phase 2 test CV against RUBRIC (phase 3).
+    Default: BA experience partly met, SQL met, the rest not met = 43.3, reject."""
+    quotes = {
+        "ba_experience": "Senior Data Analyst, Molonglo Analytics",
+        "sql": "SQL, Tableau, Python",
+        "stakeholders": "Senior Data Analyst, Molonglo Analytics",
+        "insurance": "Senior Data Analyst, Molonglo Analytics",
+    }
+    v = {
+        "ba_experience": "partly_met",
+        "sql": "met",
+        "stakeholders": "not_met",
+        "insurance": "not_met",
+        **verdicts,
+    }
+    return json.dumps(
+        {
+            "judgements": [
+                {
+                    "criterion_id": cid,
+                    "verdict": verdict,
+                    "reason": (
+                        "Analyst work shown, role is related."
+                        if verdict != "not_met"
+                        else "Not shown in the CV."
+                    ),
+                    "quote": quotes[cid] if verdict != "not_met" else "",
+                }
+                for cid, verdict in v.items()
+            ],
+            "injection_suspected": False,
+            "injection_note": "",
+        }
+    )
+
+
+SCORE_JSON = score_json()
+
 PDF = b"%PDF-1.7\n1 0 obj << /Type /Catalog >> endobj\ntrailer << >>\n%%EOF\n"
 
 

@@ -27,7 +27,8 @@ Tests and the fast evals need no API key: `make services && make test && make ev
 | `make test` | All tests (state machine, journeys, LLM client, evals, config) |
 | `make lint` | ruff, format check, mypy strict |
 | `make eval` | Fast eval suite; exit 0 pass, 1 a bar failed, 2 harness error |
-| `make eval-selftest` | Planted regression must fail the gate (proves the gate works) |
+| `make eval-selftest` | Planted regressions must fail the gate (proves the gate works), including a scorer that lifts injected CVs |
+| `make eval-rubric` / `make eval-cv` / `make eval-score` | Real model evals: rubric builder, CV parser, and the CV scorer with fairness and injection pairs (about $0.40) |
 | `make smoke` | One real model call (kie.ai DeepSeek by default) through the LLM client; prints the Langfuse trace URL |
 | `make migrate` | Apply database migrations |
 

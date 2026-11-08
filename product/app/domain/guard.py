@@ -76,5 +76,35 @@ def find_protected_terms(text: str) -> list[str]:
     return sorted(set(hits))
 
 
+# Phase 3: extra wording blocked in a scorer's reason about a candidate (a reason must be
+# about the work). Kept separate because some of these are fine in a job ad.
+# Deliberately allowed: "aged care" and "health" (nursing and care sector work), "gap" in
+# skills ("a gap in SQL"), pronouns (not a basis for a judgement on their own).
+REASON_PATTERNS: dict[str, str] = {
+    r"\bage\b(?! care)": "age",
+    r"\b(older|elderly|retirement|too old|too young)\b": "age",
+    r"\b(graduated|graduation) (long|many years|decades) ago\b": "age",
+    # "children's ward" and "working with parents" are work; a person's own family is not
+    r"\b(her|his|their|own|has|have) (young )?(children|kids|family)\b": "family_or_carer",
+    r"\b(mother|father|mum|dad) of\b|\bparenthood\b": "family_or_carer",
+    r"\bnew (mum|mom|dad|parent)\b": "family_or_carer",
+    r"\b(parental|maternity|paternity|carer'?s?) leave\b": "family_or_carer",
+    r"\b(career|employment|work) gap\b": "career_gap",
+    r"\bgaps? (in|between) (employment|work|roles|jobs|career)\b": "career_gap",
+    r"\b(illness|sick leave|medical leave)\b": "disability",
+    r"\b(suburb|postcode|lives in|based in)\b": "location_proxy",
+    r"\b(accent|surname|first name|foreign[- ]sounding)\b": "race_or_nationality",
+}
+_REASON_COMPILED = [(re.compile(p, re.IGNORECASE), c) for p, c in REASON_PATTERNS.items()]
+
+
+def find_reason_terms(text: str) -> list[str]:
+    """Protected wording in a reason about a candidate: the ad guard plus REASON_PATTERNS."""
+    hits = find_protected_terms(text)
+    for rx, _cat in _REASON_COMPILED:
+        hits += [m.group(0).lower() for m in rx.finditer(text)]
+    return sorted(set(hits))
+
+
 def protected_categories(text: str) -> list[str]:
     return sorted({cat for rx, cat in _COMPILED if rx.search(text)})

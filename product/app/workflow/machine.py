@@ -253,9 +253,29 @@ async def erase_personal_data(
         cand.state_version = from_version + 1
         cand.review_return_state = None
         from sqlalchemy import delete as sql_delete
+        from sqlalchemy import update as sql_update
 
-        from app.db.models import CvParse
+        from app.db.models import CvParse, Score
 
+        # Scores keep total, band and versions for the audit record; the CV quotes,
+        # reasons and answer values go (phase 3 design Q5).
+        scores = (await s.execute(select(Score).where(Score.candidate_id == cand.id))).scalars()
+        for sc in scores:
+            sc.judgements = [
+                {"criterion_id": j["criterion_id"], "verdict": j["verdict"], "points": j["points"]}
+                for j in sc.judgements
+            ]
+            sc.answer_results = [
+                {k: v for k, v in a.items() if k not in {"value", "note"}}
+                for a in sc.answer_results
+            ]
+            sc.reasons = []
+            sc.flags = [{"kind": f["kind"], "text": ""} for f in sc.flags]  # text quotes answers
+            sc.erased = True
+        await s.flush()
+        await s.execute(
+            sql_update(Score).where(Score.candidate_id == cand.id).values(cv_parse_id=None)
+        )
         await s.execute(sql_delete(CvParse).where(CvParse.candidate_id == cand.id))
         answers = (await s.execute(select(Answer).where(Answer.candidate_id == cand.id))).scalars()
         for a in answers:

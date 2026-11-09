@@ -10,10 +10,14 @@ PLAYWRIGHT_IMAGE="mcr.microsoft.com/playwright:v1.65.0-noble"
 
 uv run python -m scripts.demo_seed --offline
 
-set -a
-# shellcheck disable=SC1091
-. ./.env
-set +a
+# Read only the two values needed. `.env` is not a shell script (found in CI: a comment
+# with brackets broke `source .env`), so never source it.
+env_value() {
+  grep -E "^$1=" .env | tail -1 | cut -d= -f2- | sed -E 's/[[:space:]]+#.*$//; s/^"(.*)"$/\1/; s/^'"'"'(.*)'"'"'$/\1/'
+}
+DASHBOARD_PASSWORD="$(env_value DASHBOARD_PASSWORD)"
+RECRUITER_TOKEN="$(env_value RECRUITER_TOKEN)"
+export DASHBOARD_PASSWORD RECRUITER_TOKEN
 
 docker run --rm --network host --ipc=host \
   -u "$(id -u):$(id -g)" -e HOME=/tmp \

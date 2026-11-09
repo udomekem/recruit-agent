@@ -15,7 +15,11 @@ def test_env_example_lists_every_setting() -> None:
         if "=" in line and not line.lstrip().startswith("#")
     }
     expected = {name.upper() for name in Settings.model_fields}
-    compose_only = {n for n in names if n.startswith("MINIO_")}  # read by docker compose
+    # read by docker compose (MinIO) or only by the dashboard container (phase 4)
+    compose_only = {n for n in names if n.startswith("MINIO_")} | {
+        "DASHBOARD_PASSWORD",
+        "SESSION_SECRET",
+    }
     assert expected - names == set(), f"missing from .env.example: {sorted(expected - names)}"
     unknown = names - expected - compose_only
     assert unknown == set(), f"unknown in .env.example: {sorted(unknown)}"

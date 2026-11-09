@@ -1,7 +1,9 @@
 # product/
 
 The Recruit Agent application: jobs and AI drafted rubrics (phase 1), an apply page with
-encrypted CV storage, and CV parsing with redaction (phase 2). Scoring is still a stub.
+encrypted CV storage, CV parsing with redaction (phase 2), scoring with evidence, fairness
+and injection checks (phase 3), and the recruiter dashboard (phase 4, `dashboard/`).
+Rejection emails and calls are still stubs.
 Run everything from Ubuntu (WSL2) in this folder.
 Setup guide: `../stages/03-build/references/dev-environment-setup.md`.
 
@@ -9,12 +11,16 @@ Setup guide: `../stages/03-build/references/dev-environment-setup.md`.
 
 ```bash
 cp .env.example .env
-make local-env              # generates local-only secrets: recruiter token, MinIO login and key
+make local-env              # generates local-only secrets: recruiter token, dashboard password, MinIO login and key
 # add KIE_API_KEY (model calls) and, optionally, LANGFUSE_* keys to .env
 uv sync
-make up                     # API, worker, Postgres, Redis, MinIO (migrations run on API start)
+make up                     # API, worker, dashboard, Postgres, Redis, MinIO (migrations run on API start)
 curl localhost:8000/health  # {"status":"ok","database":"ok","redis":"ok"}
+make demo-seed-offline      # demo jobs and synthetic candidates, no model needed
 ```
+
+Then open http://localhost:3000 and sign in with `DASHBOARD_PASSWORD` from `.env`. Keys on a
+candidate: `s` shortlist, `r` reject, `Enter` confirm, `j` / `k` next and previous.
 
 Tests and the fast evals need no API key: `make services && make test && make eval`.
 
@@ -31,6 +37,9 @@ Tests and the fast evals need no API key: `make services && make test && make ev
 | `make eval-rubric` / `make eval-cv` / `make eval-score` | Real model evals: rubric builder, CV parser, and the CV scorer with fairness and injection pairs (about $0.40) |
 | `make smoke` | One real model call (kie.ai DeepSeek by default) through the LLM client; prints the Langfuse trace URL |
 | `make migrate` | Apply database migrations |
+| `make demo-seed-offline` / `make demo-seed` | Demo jobs and candidates: no model, or through the API with the real model (about $0.15) |
+| `make dashboard-check` | Dashboard type check, unit tests and secret check (in Docker) |
+| `make e2e` | Dashboard browser tests in the Playwright image (needs `make up`) |
 
 ## Try the phase 0 pipeline
 

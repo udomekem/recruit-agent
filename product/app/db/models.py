@@ -240,6 +240,47 @@ class Score(Base):
     )
 
 
+class Decision(Base):
+    """Phase 4. A recruiter shortlist or reject, with the recommendation it was made
+    against, for the agreement rate. Written in the same transaction as the move.
+    Erasure clears the reason (a recruiter may have typed personal details)."""
+
+    __tablename__ = "decisions"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    candidate_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidates.id"), nullable=False, index=True
+    )
+    score_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("scores.id"), nullable=True)
+    recommended: Mapped[str] = mapped_column(
+        String(10), nullable=False
+    )  # advance|maybe|reject|none
+    decision: Mapped[str] = mapped_column(String(10), nullable=False)  # shortlist | reject
+    override: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    actor_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+
+class AccessEvent(Base):
+    """Phase 4. Who read a candidate's contact details, and when (Privacy Act). Holds no
+    personal data itself, so erasure keeps it."""
+
+    __tablename__ = "access_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    candidate_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidates.id"), nullable=False, index=True
+    )
+    what: Mapped[str] = mapped_column(String(20), nullable=False)  # contact
+    actor_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
     __table_args__ = (

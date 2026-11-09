@@ -18,13 +18,15 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
-from app.api import intake_api, jobs_api, scores_api
+from app.api import dashboard_api, intake_api, jobs_api, scores_api
 from app.config import Settings, get_settings
+from app.db.models import Candidate as CandidateRow
 from app.db.session import make_engine, make_sessionmaker
 from app.domain.states import ActorType, CandidateState
 from app.integrations.storage import Storage, make_storage
 from app.llm.factory import make_llm
 from app.observability.tracing import make_tracer
+from app.workflow.decisions import decision_extra
 from app.workflow.dispatch import ArqDispatcher
 from app.workflow.jobs import JobNotFound
 from app.workflow.machine import (
@@ -72,6 +74,8 @@ class AuditOut(BaseModel):
 
 
 class CandidateDetail(CandidateOut):
+    job_id: uuid.UUID | None = None
+    erased: bool = False
     audit: list[AuditOut]
 
 
@@ -212,8 +216,14 @@ def create_app(
     async def detail(candidate_id: uuid.UUID, _: Recruiter, p: Pl) -> CandidateDetail:
         c = await get_candidate(p.sessions, candidate_id)
         trail = await audit_trail(p.sessions, candidate_id)
+        async with p.sessions() as s:
+            row = await s.get(CandidateRow, candidate_id)
+            job_id = row.job_id if row is not None else None
+            erased = row is not None and row.erased_at is not None
         return CandidateDetail(
             **_out(c).model_dump(),
+            job_id=job_id,
+            erased=erased,
             audit=[AuditOut.model_validate(e, from_attributes=True) for e in trail],
         )
 
@@ -231,6 +241,20 @@ def create_app(
         target = to if to is not None else current.review_return_state
         if target is None:
             raise TransitionRefused("no saved state to return to")
+        extra = None
+        if target in (S.SHORTLISTED, S.REJECTED) and current.state in (
+            S.SCORED,
+            S.NEEDS_REVIEW,
+        ):
+            # Phase 4: record the decision against the recommendation (agreement rate);
+            # an override needs a real reason (ValueError -> 422 before anything moves).
+            extra = await decision_extra(
+                p.sessions,
+                candidate_id,
+                choice="shortlist" if target == S.SHORTLISTED else "reject",
+                reason=body.reason,
+                actor_id=actor,
+            )
         moved = await apply_transition(
             p.sessions,
             candidate_id=candidate_id,
@@ -242,6 +266,7 @@ def create_app(
             expected_version=body.expected_version
             if body.expected_version is not None
             else current.state_version,
+            extra=extra,
         )
         await p.schedule(moved)
         return _out(moved)
@@ -286,6 +311,7 @@ def create_app(
     jobs_api.register(app, Recruiter, Pl)
     intake_api.register(app, cfg, Recruiter, Pl, Store)
     scores_api.register(app, Recruiter, Pl)
+    dashboard_api.register(app, Recruiter, Pl)
 
     _ = (
         shortlist,

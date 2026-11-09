@@ -1,0 +1,32 @@
+{
+  "name": "recruit-agent-dashboard",
+  "version": "0.4.0",
+  "private": true,
+  "description": "Recruiter dashboard (phase 4). Talks only to its own server; the server calls the API with the recruiter token.",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start --port 3000",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e": "playwright test",
+    "check-secrets": "node scripts/check-public-env.mjs"
+  },
+  "dependencies": {
+    "next": "16.4.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "server-only": "0.0.1"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@playwright/test": "1.65.0",
+    "@tailwindcss/postcss": "4.3.5",
+    "@types/node": "^22",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "tailwindcss": "4.3.5",
+    "typescript": "~5.9.0",
+    "vitest": "5.1.0"
+  }
+}

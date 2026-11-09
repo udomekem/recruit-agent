@@ -25,6 +25,8 @@ def generated() -> dict[str, str]:
     password = secrets.token_urlsafe(24)
     return {
         "RECRUITER_TOKEN": secrets.token_urlsafe(24),
+        "DASHBOARD_PASSWORD": secrets.token_urlsafe(12),
+        "SESSION_SECRET": secrets.token_urlsafe(48),
         "MINIO_ROOT_USER": user,
         "MINIO_ROOT_PASSWORD": password,
         "MINIO_KMS_SECRET_KEY": "recruit-key:" + base64.b64encode(os.urandom(32)).decode(),

@@ -130,3 +130,19 @@ def test_family_statements_removed_by_code() -> None:
         "Mother Duck Childcare (employer)."
     )
     assert pre_redact(keep, name=None, email=None, phone=None).text == keep
+
+
+def test_qualifications_and_employers_with_a_state_and_year_are_kept() -> None:
+    """Regression (phase 4 demo seed): "TAFE NSW, 2012" looked like a suburb and postcode."""
+    for line in [
+        "Certificate IV in Building and Construction, TAFE NSW, 2012",
+        "Diploma of Nursing, TAFE Queensland QLD 2015",
+        "Graduate Nurse, Health NSW 2021",
+        "Data Officer, Transport for NSW 2019 to 2022",
+        "Bachelor of Commerce, Charles Sturt University NSW 2014",
+    ]:
+        out = pre_redact(line, name=None, email=None, phone=None).text
+        assert out == line, (line, out)
+    for home in ["Parramatta NSW 2150", "Blacktown NSW, 2148", "South Yarra VIC 3141"]:
+        out = pre_redact(f"Lives at {home}", name=None, email=None, phone=None).text
+        assert "[ADDRESS]" in out and home.split()[0] not in out, (home, out)

@@ -255,7 +255,13 @@ async def erase_personal_data(
         from sqlalchemy import delete as sql_delete
         from sqlalchemy import update as sql_update
 
-        from app.db.models import CvParse, Score
+        from app.db.models import CvParse, Decision, Score
+
+        # Phase 4: a recruiter's typed reason may hold personal details; the decision
+        # itself stays for the agreement rate.
+        await s.execute(
+            sql_update(Decision).where(Decision.candidate_id == cand.id).values(reason="")
+        )
 
         # Scores keep total, band and versions for the audit record; the CV quotes,
         # reasons and answer values go (phase 3 design Q5).

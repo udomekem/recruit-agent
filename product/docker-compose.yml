@@ -72,6 +72,19 @@ services:
     depends_on:
       api: {condition: service_healthy}
 
+  # Recruiter dashboard (phase 4). Only these settings are passed in; the browser never
+  # sees the API token (the dashboard's server adds it to each API call).
+  dashboard:
+    build: ./dashboard
+    environment:
+      API_URL: http://api:8000
+      RECRUITER_TOKEN: ${RECRUITER_TOKEN:?run make local-env}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?run make local-env}
+      SESSION_SECRET: ${SESSION_SECRET:?run make local-env}
+    ports: ["3000:3000"]
+    depends_on:
+      api: {condition: service_healthy}
+
 volumes:
   pgdata:
   miniodata:

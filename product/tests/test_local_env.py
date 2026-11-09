@@ -39,6 +39,8 @@ def test_fills_blanks_keeps_existing_and_is_idempotent(
     first = parse(env.read_text())
     for name in [
         "RECRUITER_TOKEN",
+        "DASHBOARD_PASSWORD",
+        "SESSION_SECRET",
         "MINIO_ROOT_USER",
         "MINIO_ROOT_PASSWORD",
         "MINIO_KMS_SECRET_KEY",

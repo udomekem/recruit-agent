@@ -90,6 +90,65 @@ jobs:
           path: product/evals/reports/
           if-no-files-found: warn
 
+  dashboard:
+    # Phase 4: type check, unit tests, the secret exposure check, and a production build
+    # with settings from the environment only (Vercel ready).
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: product/dashboard
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: product/dashboard/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Type check
+        run: npx next typegen && npx tsc --noEmit
+      - name: Unit tests
+        run: npx vitest run
+      - name: No secrets exposed to browser code
+        run: node scripts/check-public-env.mjs
+      - name: Production build
+        run: npx next build
+
+  e2e:
+    # Phase 4: the whole stack in Docker, seeded offline (no model, no secrets), then the
+    # browser tests (review speed, blind review, token exposure, overrides, accessibility).
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: product
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh && echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - run: uv sync --frozen
+      - name: Local settings for this run only
+        run: cp .env.example .env && make local-env
+      - name: Start the stack
+        run: docker compose up -d --build --wait
+      - name: Dashboard packages for the test runner
+        working-directory: product/dashboard
+        run: npm ci --no-audit --no-fund
+      - name: Browser tests
+        run: make e2e
+      - name: Stack logs on failure
+        if: failure()
+        run: docker compose logs --tail 200
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results
+          path: product/dashboard/test-results/
+          if-no-files-found: ignore
+
   secret-scan:
     runs-on: ubuntu-latest
     timeout-minutes: 10

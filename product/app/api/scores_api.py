@@ -8,7 +8,8 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
 
-from app.db.models import Candidate, Job, Rubric, Score
+from app.db.models import Candidate, Decision, Job, Rubric, Score
+from app.scoring.agreement import agreement
 
 BAND_ORDER = {"advance": 0, "maybe": 1, "reject": 2}
 
@@ -70,9 +71,23 @@ def register(app: FastAPI, Recruiter: Any, Pl: Any) -> None:  # noqa: N803
                 .scalars()
                 .all()
             )
+            decisions = (
+                (
+                    await s.execute(
+                        select(Decision)
+                        .join(Candidate, Candidate.id == Decision.candidate_id)
+                        .where(Candidate.job_id == job_id)
+                        .order_by(Decision.created_at)
+                    )
+                )
+                .scalars()
+                .all()
+            )
         latest: dict[uuid.UUID, Score] = {}
         for sc in scores:  # ordered by time, so the last one wins
             latest[sc.candidate_id] = sc
+        last_decision: dict[uuid.UUID, Decision] = {d.candidate_id: d for d in decisions}
+        summary = agreement((d.recommended, d.decision) for d in last_decision.values())
 
         scored, unscored = [], []
         for c in cands:
@@ -82,7 +97,15 @@ def register(app: FastAPI, Recruiter: Any, Pl: Any) -> None:  # noqa: N803
                 "state": c.state,
                 "applied_at": c.created_at.isoformat(),
                 "erased": c.erased_at is not None,
+                "state_version": c.state_version,
             }
+            d = last_decision.get(c.id)
+            if d is not None:
+                base["decision"] = {
+                    "decision": d.decision,
+                    "recommended": d.recommended,
+                    "override": d.override,
+                }
             sc = latest.get(c.id)
             if sc is None:
                 unscored.append(base)
@@ -101,7 +124,22 @@ def register(app: FastAPI, Recruiter: Any, Pl: Any) -> None:  # noqa: N803
         unscored.sort(key=lambda r: (r["state"], r["applied_at"]))
         for i, r in enumerate(scored, start=1):
             r["rank"] = i
-        return JSONResponse(content={"job_id": str(job_id), "scored": scored, "unscored": unscored})
+        return JSONResponse(
+            content={
+                "job_id": str(job_id),
+                "rubric_version": current,
+                "outdated": sum(
+                    1
+                    for r in scored
+                    if r["state"] == "SCORED"
+                    and current is not None
+                    and r["rubric_version"] < current
+                ),
+                "agreement": summary.as_dict(),
+                "scored": scored,
+                "unscored": unscored,
+            }
+        )
 
     @app.get("/candidates/{candidate_id}/score")
     async def candidate_score(candidate_id: uuid.UUID, _: Recruiter, p: Pl) -> JSONResponse:

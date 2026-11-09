@@ -34,7 +34,19 @@ class RubricJob:
         return f"build_rubric:{self.job_id}:v{self.expected_version}"
 
 
-QueuedJob = AdvanceJob | RubricJob
+@dataclass(frozen=True)
+class RescoreJob:
+    """Phase 4: score an undecided candidate again against a newer approved rubric."""
+
+    candidate_id: uuid.UUID
+    rubric_id: uuid.UUID
+
+    @property
+    def queue_id(self) -> str:
+        return f"rescore:{self.candidate_id}:{self.rubric_id}"
+
+
+QueuedJob = AdvanceJob | RubricJob | RescoreJob
 
 
 class Dispatcher(Protocol):
@@ -54,6 +66,9 @@ class ArqDispatcher:
                 job.expected_version,
                 _job_id=job.queue_id,
             )
+            return
+        if isinstance(job, RescoreJob):
+            await self._pool.enqueue_job("rescore", str(job.candidate_id), _job_id=job.queue_id)
             return
         await self._pool.enqueue_job(
             "advance",

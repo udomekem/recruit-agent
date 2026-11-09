@@ -5,3 +5,4 @@
 .mypy_cache
 .ruff_cache
 evals/reports
+dashboard

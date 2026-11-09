@@ -27,7 +27,14 @@ from app.integrations.storage import Storage
 from app.llm.client import LLMClient, LLMError
 from app.observability.tracing import Tracer
 from app.scoring.step import run_score
-from app.workflow.dispatch import AdvanceJob, Dispatcher, InlineDispatcher, RubricJob
+from app.workflow.decisions import request_rescore, rescore_candidate
+from app.workflow.dispatch import (
+    AdvanceJob,
+    Dispatcher,
+    InlineDispatcher,
+    RescoreJob,
+    RubricJob,
+)
 from app.workflow.jobs import JobNotFound, JobSnapshot, get_job, save_rubric, transition_job
 from app.workflow.machine import (
     CandidateNotFound,
@@ -363,6 +370,25 @@ class Pipeline:
             )
         return StepOutcome(S.NEEDS_REVIEW, f"no answer after {cand.screen_call_attempts} attempts")
 
+    async def request_rescore(self, job_id: uuid.UUID, *, actor_id: str) -> int:
+        """Queue a rescore for each undecided candidate scored on an older rubric."""
+        ids, rubric_id = await request_rescore(self.sessions, job_id, actor_id=actor_id)
+        if rubric_id is not None:
+            for cid in ids:
+                await self.dispatcher.enqueue(RescoreJob(cid, rubric_id))
+        return len(ids)
+
+    async def rescore(self, candidate_id: uuid.UUID) -> str:
+        with self.tracer.span("step:rescore", candidate_id=str(candidate_id)) as span:
+            result = await rescore_candidate(
+                self.sessions,
+                self.llm,
+                candidate_id,
+                production=self.settings.environment == "production",
+            )
+            span.update(outcome=result)
+        return result
+
     async def drain(self) -> int:
         """Run queued jobs in-process until the queue is empty (InlineDispatcher only)."""
         if not isinstance(self.dispatcher, InlineDispatcher):
@@ -372,6 +398,8 @@ class Pipeline:
             job = self.dispatcher.queue.pop(0)
             if isinstance(job, RubricJob):
                 await self.build_rubric(job.job_id, job.expected_state, job.expected_version)
+            elif isinstance(job, RescoreJob):
+                await self.rescore(job.candidate_id)
             else:
                 await self.advance(job.candidate_id, job.expected_state, job.expected_version)
             ran += 1

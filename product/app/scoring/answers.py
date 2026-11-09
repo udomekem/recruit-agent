@@ -41,6 +41,13 @@ def _money(n: float) -> str:
     return f"${n:,.0f}"
 
 
+def _words(value: Any) -> str:
+    """Plain words for a recruiter: yes and no, not Python's True and False."""
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    return repr(value) if isinstance(value, str) else str(value)
+
+
 def _lower(value: Any) -> float | None:
     if isinstance(value, dict) and "min" in value:
         return float(value["min"])
@@ -61,7 +68,11 @@ def score_answer(q: QuestionInput, *, salary_max: int) -> AnswerResult:
     bad: Outcome = "fail" if hard else "flag"
     if kind == "must_equal":
         ok = q.value == rule.get("value")
-        note = "as required" if ok else f"answered {q.value!r}, required {rule.get('value')!r}"
+        note = (
+            "as required"
+            if ok
+            else f"answered {_words(q.value)}, required {_words(rule.get('value'))}"
+        )
         outcome: Outcome = "pass" if ok else bad
         return AnswerResult(q.key, q.value, kind, outcome, hard, note)
     if kind == "max_number_vs_band":

@@ -1,0 +1,30 @@
+@import "tailwindcss";
+
+@custom-variant dark (@media (prefers-color-scheme: dark));
+
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  @apply bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Always visible keyboard focus (phase 4 design section 4). */
+:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+mark.quote {
+  @apply rounded bg-yellow-200 px-0.5 text-zinc-900 dark:bg-yellow-700 dark:text-zinc-50;
+}
+
+mark.quote.active {
+  @apply bg-blue-200 ring-2 ring-blue-600 dark:bg-blue-800;
+}
+
+kbd {
+  @apply rounded border border-zinc-300 bg-white px-1.5 py-0.5 font-mono text-xs text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100;
+}

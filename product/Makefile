@@ -1,7 +1,7 @@
 # Thin wrappers over Python entry points. Run from product/ inside Ubuntu (WSL2).
 UV ?= uv
 
-.PHONY: help local-env up down services logs migrate test lint typecheck eval eval-full eval-rubric eval-cv eval-score eval-selftest smoke ci
+.PHONY: help local-env up down services logs migrate test lint typecheck eval eval-full eval-rubric eval-cv eval-score eval-selftest smoke ci demo-seed demo-seed-offline dashboard-check e2e
 
 help:
 	@grep -E '^[a-z-]+:' Makefile | cut -d: -f1
@@ -58,3 +58,15 @@ eval-cv:       ## CV parser and redaction with the real model (kie.ai DeepSeek)
 
 eval-score:    ## CV scorer, fairness, injection with the real model (kie.ai DeepSeek, about $$0.40)
 	$(UV) run python -m evals run --suite score
+
+demo-seed-offline: ## demo jobs and 95 synthetic candidates, no model (needs make up)
+	$(UV) run python -m scripts.demo_seed --offline
+
+demo-seed:     ## demo jobs through the API with the real model (about $$0.15; needs make up)
+	$(UV) run python -m scripts.demo_seed --real
+
+dashboard-check: ## dashboard type check, unit tests, secret check (in Docker)
+	docker run --rm -u "$$(id -u):$$(id -g)" -e HOME=/tmp -e NEXT_TELEMETRY_DISABLED=1 -v "$$PWD/dashboard":/app -w /app node:22-alpine sh -c "npm ci --no-audit --no-fund >/dev/null && npx next typegen >/dev/null && npx tsc --noEmit && npx vitest run && node scripts/check-public-env.mjs"
+
+e2e:           ## dashboard browser tests in the Playwright image (needs make up)
+	bash scripts/e2e.sh

@@ -92,6 +92,27 @@ _STREET = re.compile(
 _SUBURB = re.compile(
     r"\b(?:[A-Z][A-Za-z'-]+[ \t]+){1,3}(?:NSW|VIC|QLD|WA|SA|TAS|ACT|NT)[\s,]+\d{4}\b"
 )
+# Found by the phase 4 demo seed: "Certificate IV ..., TAFE NSW, 2012" matched the suburb
+# pattern (a year looks like a postcode), so the institution and year were removed. A
+# match that names an organisation is a qualification or employer, not a home address.
+_ORG_WORDS = re.compile(
+    r"\b(?:TAFE|University|Institute|College|School|Academy|Department|Dept|Government|"
+    r"Health|Transport|Police|Ambulance|Fire|Council|Service|Services|Education|Training|"
+    r"Hospital|Authority|Commission|Agency)\b",
+    re.IGNORECASE,
+)
+
+
+def _redact_suburbs(r: Redaction) -> None:
+    def repl(m: re.Match[str]) -> str:
+        if _ORG_WORDS.search(m.group(0)):
+            return m.group(0)
+        r.counts[ADDRESS] += 1
+        return ADDRESS
+
+    r.text = _SUBURB.sub(repl, r.text)
+
+
 _DOB = re.compile(
     r"(?i)\b(?:date\s+of\s+birth|d\.?o\.?b\.?)\s*[:\-]?\s*[^\n|]{0,40}"
     r"|\bborn(?:\s+on)?\s*[:\-]?\s*\d{1,2}[\s/.-]+(?:\d{1,2}|[A-Za-z]{3,9})[\s/.-]+\d{2,4}"
@@ -203,7 +224,7 @@ def pre_redact(text: str, *, name: str | None, email: str | None, phone: str | N
     _sub(_LINK, LINK, r)
     _sub(_PHONE, PHONE, r)
     _sub(_STREET, ADDRESS, r)
-    _sub(_SUBURB, ADDRESS, r)
+    _redact_suburbs(r)
     _sub(_DOB, DOB, r)
     r.text, n = _PROTECTED_LINE.subn(lambda m: f"{m.group('label')} {PROTECTED}", r.text)
     r.counts[PROTECTED] += n

@@ -72,8 +72,19 @@ async def build_rubric_job(
     return moved.state.value if moved else "no-op"
 
 
+async def rescore(ctx: dict[str, Any], candidate_id: str) -> str:
+    pipeline: Pipeline = ctx["pipeline"]
+    result = await pipeline.rescore(uuid.UUID(candidate_id))
+    pipeline.tracer.flush()
+    return result
+
+
 class WorkerSettings:
-    functions: ClassVar[list[Any]] = [advance, func(build_rubric_job, name="build_rubric")]
+    functions: ClassVar[list[Any]] = [
+        advance,
+        func(build_rubric_job, name="build_rubric"),
+        rescore,
+    ]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(_settings.redis_url)

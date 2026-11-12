@@ -4,6 +4,9 @@ import { api, type RejectionQueue } from "@/lib/api";
 
 import { resolve, retryDelivery } from "../actions";
 
+// To do (phase 5B UI design): everything waiting on the recruiter in one place. Same
+// actions as the phase 4 and 5 review queue.
+
 type Queue = {
   candidates: {
     id: string;
@@ -27,125 +30,170 @@ export default async function ReviewPage({
     api.get<Queue>("/review-queue"),
     api.get<RejectionQueue>("/rejections/queue"),
   ]);
+  const open = q.candidates.length + q.jobs.length + emails.drafts.length + emails.undelivered.length;
   return (
     <>
-      <h1 className="text-2xl font-semibold">Review queue</h1>
-      <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-400">
-        Candidates the pipeline could not finish on its own. Retry sends them back to the step that failed.
-      </p>
+      <div className="h-hero">
+        <div>
+          <div className="h-eyebrow">To do</div>
+          <h1 className="h-h1">Things waiting on you.</h1>
+          <p className="h-intro">
+            Everything the agent could not finish alone. Retry sends a candidate back to the step that failed.
+          </p>
+        </div>
+        <div className="h-stats" aria-label="Open items">
+          <div className="h-stat">
+            <strong>{String(open).padStart(2, "0")}</strong>
+            <small>Open items</small>
+          </div>
+          <div className="h-stat">
+            <strong>{String(q.candidates.length).padStart(2, "0")}</strong>
+            <small>Need review</small>
+          </div>
+          <div className="h-stat">
+            <strong>{String(emails.drafts.length).padStart(2, "0")}</strong>
+            <small>Emails to send</small>
+          </div>
+        </div>
+      </div>
       {s.error ? (
-        <p role="alert" className="mt-3 rounded bg-rose-100 px-3 py-2 text-rose-900 dark:bg-rose-900 dark:text-rose-100">
+        <p role="alert" className="h-banner bad">
           {s.error}
         </p>
       ) : null}
       {s.done ? (
-        <p role="status" className="mt-3 rounded bg-emerald-100 px-3 py-2 text-emerald-900 dark:bg-emerald-900 dark:text-emerald-100">
+        <p role="status" className="h-banner ok">
           Done.
         </p>
       ) : null}
-      {q.candidates.length === 0 ? (
-        <p className="mt-4">Nothing needs review.</p>
-      ) : (
-        <table className="mt-4 w-full border-collapse text-sm">
-          <caption className="sr-only">Candidates that need review</caption>
-          <thead>
-            <tr className="border-b border-zinc-300 text-left dark:border-zinc-700">
-              <th scope="col" className="py-2 pr-3">Candidate</th>
-              <th scope="col" className="py-2 pr-3">Job</th>
-              <th scope="col" className="py-2 pr-3">Why</th>
-              <th scope="col" className="py-2 pr-3">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {q.candidates.map((c) => (
-              <tr key={c.id} className="border-b border-zinc-200 align-top dark:border-zinc-800">
-                <td className="py-2 pr-3">
-                  <Link href={`/candidates/${c.id}`} className="text-blue-800 underline dark:text-blue-300">
-                    {c.label}
-                  </Link>
-                </td>
-                <td className="py-2 pr-3">{c.job_title ?? "none"}</td>
-                <td className="py-2 pr-3">{c.reason}</td>
-                <td className="py-2 pr-3">
-                  <form action={resolve} className="flex flex-wrap items-center gap-2">
-                    <input type="hidden" name="candidate_id" value={c.id} />
-                    <input type="hidden" name="expected_version" value={c.state_version} />
-                    <label className="sr-only" htmlFor={`reason-${c.id}`}>
-                      Reason
-                    </label>
-                    <input
-                      id={`reason-${c.id}`}
-                      name="reason"
-                      placeholder="Reason (optional)"
-                      className="w-48 rounded border border-zinc-400 bg-white px-2 py-1 dark:border-zinc-600 dark:bg-zinc-900"
-                    />
-                    {c.return_state ? (
-                      <button name="action" value="retry" className="rounded border border-zinc-500 px-2 py-1">
-                        Retry
-                      </button>
-                    ) : null}
-                    <button name="action" value="reject" className="rounded bg-rose-700 px-2 py-1 text-white">
-                      Reject
-                    </button>
-                  </form>
-                </td>
+
+      <section className="h-card" aria-labelledby="needs-h">
+        <div className="h-chead">
+          <h2 id="needs-h">Candidates that need review</h2>
+        </div>
+        {q.candidates.length === 0 ? (
+          <p className="h-empty">Nothing needs review.</p>
+        ) : (
+          <table className="h-table">
+            <caption className="sr-only">Candidates that need review</caption>
+            <thead>
+              <tr>
+                <th scope="col">Candidate</th>
+                <th scope="col" className="hide-sm">
+                  Why
+                </th>
+                <th scope="col">Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+            </thead>
+            <tbody>
+              {q.candidates.map((c) => (
+                <tr key={c.id}>
+                  <td>
+                    <Link href={`/candidates/${c.id}`} className="h-t1">
+                      {c.label}
+                    </Link>
+                    <div className="h-t2">{c.job_title ?? "No job"}</div>
+                  </td>
+                  <td className="hide-sm">{c.reason}</td>
+                  <td>
+                    <form action={resolve} className="h-inline-form">
+                      <input type="hidden" name="candidate_id" value={c.id} />
+                      <input type="hidden" name="expected_version" value={c.state_version} />
+                      <label className="sr-only" htmlFor={`reason-${c.id}`}>
+                        Reason
+                      </label>
+                      <input
+                        id={`reason-${c.id}`}
+                        name="reason"
+                        placeholder="Reason (optional)"
+                        className="h-input"
+                        style={{ width: 180, padding: "7px 10px" }}
+                      />
+                      {c.return_state ? (
+                        <button name="action" value="retry" className="h-btn small">
+                          Retry
+                        </button>
+                      ) : null}
+                      <button name="action" value="reject" className="h-btn small danger">
+                        Reject
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </section>
+
       {q.jobs.length ? (
-        <>
-          <h2 className="mt-8 text-lg font-semibold">Jobs whose rubric could not be built</h2>
-          <ul className="mt-2 list-disc pl-6 text-sm">
+        <section className="h-card" aria-labelledby="rubric-h">
+          <div className="h-chead">
+            <h2 id="rubric-h">Jobs whose rubric could not be built</h2>
+          </div>
+          <ul className="h-list">
             {q.jobs.map((j) => (
-              <li key={j.id}>{j.title} (supply a rubric through the API)</li>
+              <li key={j.id}>
+                <span className="h-t1">{j.title}</span>
+                <span className="h-t2">Supply a rubric through the API</span>
+              </li>
             ))}
           </ul>
-        </>
+        </section>
       ) : null}
-      <h2 className="mt-8 text-lg font-semibold">Rejection emails to send</h2>
-      {emails.drafts.length === 0 ? (
-        <p className="mt-2 text-sm">No drafts waiting.</p>
-      ) : (
-        <ul aria-label="Rejection emails to send" className="mt-2 space-y-1 text-sm">
-          {emails.drafts.map((d) => (
-            <li key={d.id}>
-              <Link href={`/candidates/${d.id}`} className="text-blue-800 underline dark:text-blue-300">
-                {d.label}
-              </Link>{" "}
-              ({d.job_title ?? "no job"})
-              {d.needs_edit ? (
-                <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-amber-950 dark:bg-amber-900 dark:text-amber-50">
-                  read first: {d.fallback_reason}
-                </span>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      )}
-      <h2 className="mt-8 text-lg font-semibold">Emails not delivered</h2>
-      {emails.undelivered.length === 0 ? (
-        <p className="mt-2 text-sm">None.</p>
-      ) : (
-        <ul aria-label="Emails not delivered" className="mt-2 space-y-2 text-sm">
-          {emails.undelivered.map((u) => (
-            <li key={u.id}>
-              <form action={retryDelivery} className="flex flex-wrap items-center gap-2">
-                <input type="hidden" name="candidate_id" value={u.id} />
-                <input type="hidden" name="back" value="/review?done=1" />
-                <Link href={`/candidates/${u.id}`} className="text-blue-800 underline dark:text-blue-300">
-                  {u.label}
-                </Link>
+
+      <section className="h-card" aria-labelledby="send-h">
+        <div className="h-chead">
+          <h2 id="send-h">Rejection emails to send</h2>
+          <small>Read each one, then send it from the candidate</small>
+        </div>
+        {emails.drafts.length === 0 ? (
+          <p className="h-empty">No drafts waiting.</p>
+        ) : (
+          <ul aria-label="Rejection emails to send" className="h-list">
+            {emails.drafts.map((d) => (
+              <li key={d.id}>
                 <span>
-                  ({u.job_title ?? "no job"}): {u.attempts} attempts, {u.last_error}
+                  <Link href={`/candidates/${d.id}`} className="h-t1">
+                    {d.label}
+                  </Link>
+                  <span className="h-t2"> · {d.job_title ?? "no job"}</span>
                 </span>
-                <button className="rounded border border-zinc-500 px-2 py-1">Retry delivery</button>
-              </form>
-            </li>
-          ))}
-        </ul>
-      )}
+                {d.needs_edit ? <span className="h-pill warn">read first: {d.fallback_reason}</span> : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="h-card" aria-labelledby="undelivered-h">
+        <div className="h-chead">
+          <h2 id="undelivered-h">Emails not delivered</h2>
+        </div>
+        {emails.undelivered.length === 0 ? (
+          <p className="h-empty">None.</p>
+        ) : (
+          <ul aria-label="Emails not delivered" className="h-list">
+            {emails.undelivered.map((u) => (
+              <li key={u.id}>
+                <form action={retryDelivery} className="h-inline-form" style={{ width: "100%" }}>
+                  <input type="hidden" name="candidate_id" value={u.id} />
+                  <input type="hidden" name="back" value="/review?done=1" />
+                  <Link href={`/candidates/${u.id}`} className="h-t1">
+                    {u.label}
+                  </Link>
+                  <span className="h-t2">
+                    {u.job_title ?? "no job"}: {u.attempts} attempts, {u.last_error}
+                  </span>
+                  <button className="h-btn small" style={{ marginLeft: "auto" }}>
+                    Retry delivery
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </>
   );
 }

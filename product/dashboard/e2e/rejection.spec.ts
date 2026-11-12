@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { ALERT, openJob, PERSONAL, signIn } from "./helpers";
+import { ALERT, filterTodo, openCandidate, openJob, PERSONAL, signIn } from "./helpers";
 
 // Phase 5 brief: reject, read the draft, an edit with protected wording is refused, send
 // in one action, and exactly one email arrives in the local Mailpit inbox with the first
@@ -26,13 +26,10 @@ test("reject, edit, send: one email arrives, the name only in the inbox", async 
   test.setTimeout(120_000);
   await signIn(page);
   await openJob(page, "Data Analyst");
-  await page.locator("#f-band").selectOption("reject");
-  await page.locator("#f-state").selectOption("SCORED");
-  await page.getByRole("button", { name: "Filter" }).click();
-  await page.locator("[data-row-link]").first().click();
-  await expect(page.getByRole("heading", { name: "Evidence" })).toBeVisible();
+  await filterTodo(page, "reject");
+  await openCandidate(page, page.locator("[data-row-link]").first());
   const url = page.url();
-  const candidateId = url.split("/").pop()!;
+  const candidateId = new URL(url).pathname.split("/").pop()!;
 
   await page.keyboard.press("r");
   await page.keyboard.press("Enter");

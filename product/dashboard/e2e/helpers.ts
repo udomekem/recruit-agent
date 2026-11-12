@@ -11,12 +11,12 @@ export async function signIn(page: Page): Promise<void> {
   await page.goto("/login");
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page.getByRole("heading", { name: "Jobs" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Your next great hire." })).toBeVisible();
 }
 
 /** The newest job whose title contains `title` (the seed adds new jobs on each run). */
 export async function openJob(page: Page, title: string): Promise<void> {
-  await page.goto("/");
+  await page.goto("/jobs");
   await page.getByRole("link", { name: title, exact: true }).first().click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText(title.replace(/ \(.*/, ""));
 }
@@ -45,6 +45,25 @@ export const PERSONAL: RegExp[] = [
   ...seededPeople().map((s) => new RegExp(`\\b${s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`)),
   /0491 570 [3-8]\d\d/,
 ];
+
+/** Click a link to a candidate and wait until that candidate is open. List pages show
+ * the first candidate's review already, so a heading alone does not prove the click landed. */
+export async function openCandidate(page: Page, link: import("@playwright/test").Locator): Promise<void> {
+  const href = (await link.getAttribute("href")) ?? "";
+  const path = href.split("?")[0];
+  await link.click();
+  await page.waitForURL((u) => u.pathname === path);
+  await expect(page.getByRole("heading", { name: "Evidence" })).toBeVisible();
+}
+
+/** Show only undecided candidates with this recommendation in the open job. */
+export async function filterTodo(page: Page, band: string): Promise<void> {
+  await page.locator("#f-band").selectOption(band);
+  await page.getByRole("button", { name: "Filter" }).click();
+  await page.waitForURL(/band=/);
+  await page.getByRole("navigation", { name: "Status" }).getByRole("link", { name: /^To decide/ }).click();
+  await page.waitForURL(/status=todo/);
+}
 
 /** Our own alerts (Next.js adds an empty route announcer with role alert too). */
 export const ALERT = '[role="alert"]:not(#__next-route-announcer__)';

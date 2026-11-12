@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Northwind Talent · Recruiter",
+  title: "hira · Northwind Talent",
   description: "Review candidates with the evidence beside each one.",
   robots: { index: false, follow: false },
 };

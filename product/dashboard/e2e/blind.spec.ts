@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { PERSONAL, openJob, signIn } from "./helpers";
+import { PERSONAL, openCandidate, openJob, signIn } from "./helpers";
 
 // Brief bar: no name, email or phone in the page before shortlist (0).
 test("blind review: no personal details before shortlist", async ({ page }) => {
@@ -17,8 +17,7 @@ test("blind review: no personal details before shortlist", async ({ page }) => {
   bodies.push(await page.content());
   const links = page.locator("[data-row-link]");
   for (let i = 0; i < 3; i++) {
-    await links.nth(i).click();
-    await expect(page.getByRole("heading", { name: "Evidence" })).toBeVisible();
+    await openCandidate(page, links.nth(i));
     bodies.push(await page.content());
     await page.goBack();
   }
@@ -31,8 +30,7 @@ test("blind review: no personal details before shortlist", async ({ page }) => {
 test("contact details appear after shortlist, and the view is logged", async ({ page }) => {
   await signIn(page);
   await openJob(page, "Data Analyst");
-  await page.getByRole("link", { name: "Review next undecided" }).click();
-  await expect(page.getByRole("heading", { name: "Evidence" })).toBeVisible();
+  await openCandidate(page, page.getByRole("link", { name: "Review next undecided" }));
   const url = page.url();
   await expect(page.getByText("@example.test")).toHaveCount(0);
   await page.keyboard.press("s");
@@ -44,4 +42,7 @@ test("contact details appear after shortlist, and the view is logged", async ({ 
   const contact = page.getByRole("region", { name: /Contact/ });
   await expect(contact).toContainText("@example.test");
   await expect(page.getByText("Contact details viewed")).toBeVisible();
+  // A list page shows its first candidate by default: that must never open contact details.
+  await openJob(page, "Data Analyst");
+  await expect(page.getByText("@example.test")).toHaveCount(0);
 });

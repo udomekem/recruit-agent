@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { openJob, signIn } from "./helpers";
+import { openCandidate, openJob, signIn } from "./helpers";
 
 // Brief bar: a recruiter reviews 50 seeded candidates in at most 2 actions each.
 // An action is a key press or a click (design Q2). Each decision agrees with the AI:
@@ -9,7 +9,7 @@ test("50 candidates decided with the keyboard, 2 actions each", async ({ page })
   test.setTimeout(600_000);
   await signIn(page);
   await openJob(page, "Data Analyst (review drill)");
-  await page.getByRole("link", { name: "Review next undecided" }).click();
+  await openCandidate(page, page.getByRole("link", { name: "Review next undecided" }));
 
   let actions = 0;
   let decided = 0;

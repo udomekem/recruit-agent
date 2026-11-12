@@ -1,16 +1,13 @@
 import { expect, test } from "@playwright/test";
 
-import { ALERT, openJob, signIn } from "./helpers";
+import { ALERT, filterTodo, openCandidate, openJob, signIn } from "./helpers";
 
 // Brief bars: an override without a real reason is refused by the form (the API tests
 // cover the API side); a stale page cannot decide twice.
 
 async function openFirstWithBand(page: import("@playwright/test").Page, band: string) {
-  await page.locator("#f-band").selectOption(band);
-  await page.locator("#f-state").selectOption("SCORED");
-  await page.getByRole("button", { name: "Filter" }).click();
-  await page.locator("[data-row-link]").first().click();
-  await expect(page.getByRole("heading", { name: "Evidence" })).toBeVisible();
+  await filterTodo(page, band);
+  await openCandidate(page, page.locator("[data-row-link]").first());
 }
 
 test("an override needs a reason of at least 10 characters", async ({ page }) => {
@@ -31,6 +28,7 @@ test("an override needs a reason of at least 10 characters", async ({ page }) =>
   await page.keyboard.press("Enter");
   await page.waitForURL((u) => u.toString() !== url);
   await page.goto(url);
+  await page.getByRole("tab", { name: "Activity" }).click();
   await expect(page.getByText(/Strong portfolio|Portfolio shows SQL work/)).toBeVisible();
 });
 

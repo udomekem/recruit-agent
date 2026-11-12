@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { TOKEN, openJob, signIn } from "./helpers";
+import { TOKEN, openCandidate, openJob, signIn } from "./helpers";
 
 // Brief bar: the API token appears in no page, script or response (0).
 test("the API token never reaches the browser", async ({ page }) => {
@@ -18,8 +18,7 @@ test("the API token never reaches the browser", async ({ page }) => {
 
   await signIn(page);
   await openJob(page, "Data Analyst");
-  await page.getByRole("link", { name: "Review next undecided" }).click();
-  await expect(page.getByRole("heading", { name: "Evidence" })).toBeVisible();
+  await openCandidate(page, page.getByRole("link", { name: "Review next undecided" }));
   seen.push(await page.content());
   await page.goto("/review");
   seen.push(await page.content());

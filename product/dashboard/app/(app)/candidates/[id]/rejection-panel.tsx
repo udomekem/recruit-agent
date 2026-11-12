@@ -29,9 +29,9 @@ const STATUS_LABEL: Record<string, string> = {
 
 function Checks({ checks }: { checks: Check[] }) {
   return (
-    <ul aria-label="Checks" className="mt-2 grid gap-1 text-xs sm:grid-cols-2">
+    <ul aria-label="Checks" className="h-checks">
       {checks.map((c) => (
-        <li key={c.rule} className={c.passed ? "text-emerald-800 dark:text-emerald-300" : "font-medium text-rose-800 dark:text-rose-300"}>
+        <li key={c.rule} data-ok={c.passed}>
           {c.passed ? "Pass" : "Fail"}: {RULE_LABEL[c.rule] ?? c.rule}
           {c.passed ? "" : ` (${c.detail})`}
         </li>
@@ -81,9 +81,9 @@ export function RejectionPanel(props: {
 
   if (props.state === "REJECTED") {
     return (
-      <section aria-label="Rejection email" className="mt-4 rounded border border-zinc-300 p-3 dark:border-zinc-700">
-        <h2 className="font-semibold">Rejection email</h2>
-        <p role="status" className="mt-1 text-sm">The email is being drafted. Reload in a few seconds.</p>
+      <section aria-label="Rejection email">
+        <h2 className="h-panel-title">Rejection email</h2>
+        <p role="status" className="h-note">The email is being drafted. Reload in a few seconds.</p>
       </section>
     );
   }
@@ -112,27 +112,27 @@ export function RejectionPanel(props: {
 
   const sentView = props.state === "REJECTION_SENT";
   return (
-    <section aria-labelledby="email-h" className="mt-4 rounded border border-zinc-300 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900">
-      <div className="flex flex-wrap items-baseline gap-3">
-        <h2 id="email-h" className="font-semibold">
+    <section aria-labelledby="email-h">
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: 12 }}>
+        <h2 id="email-h" className="h-panel-title" style={{ margin: 0 }}>
           {sentView ? "Rejection email sent" : "Rejection email draft"}
         </h2>
-        <span className="text-xs text-zinc-700 dark:text-zinc-400">
+        <span className="h-astatus">
           version {draft.version} by {draft.source === "agent" ? `the writer (${draft.prompt})` : draft.source === "template" ? "the plain template" : `you (${draft.actor_id})`}
         </span>
       </div>
 
       {draft.needs_edit && !sentView ? (
-        <p role="note" className="mt-2 rounded bg-amber-100 px-3 py-2 text-sm text-amber-950 dark:bg-amber-900 dark:text-amber-50">
+        <p role="note" className="h-banner warn" style={{ marginTop: 12 }}>
           Read this before sending: plain template used because {draft.fallback_reason}.
         </p>
       ) : null}
 
       {draft.erased ? (
-        <p className="mt-2 text-sm">The email text was erased with the candidate&apos;s data.</p>
+        <p className="h-note" style={{ marginTop: 12 }}>The email text was erased with the candidate&apos;s data.</p>
       ) : editing ? (
-        <div className="mt-2 space-y-2">
-          <label htmlFor="email-body" className="block text-sm font-medium">
+        <div style={{ marginTop: 12 }}>
+          <label htmlFor="email-body" className="h-label">
             Email text (the greeting, contact line, deletion line and sign off are added automatically)
           </label>
           <textarea
@@ -142,31 +142,31 @@ export function RejectionPanel(props: {
             onChange={(e) => setBody(e.target.value)}
             rows={10}
             maxLength={4000}
-            className="w-full rounded border border-zinc-400 bg-white px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className="h-input"
           />
-          <div className="flex gap-2">
-            <button type="button" disabled={pending} onClick={save} className="rounded bg-blue-700 px-3 py-1 font-medium text-white hover:bg-blue-800 disabled:opacity-60">
+          <div className="h-actions" style={{ marginTop: 10 }}>
+            <button type="button" disabled={pending} onClick={save} className="h-btn primary">
               {pending ? "Checking" : "Save"}
             </button>
-            <button type="button" onClick={() => setEditing(false)} className="rounded border border-zinc-400 px-3 py-1">
+            <button type="button" onClick={() => setEditing(false)} className="h-btn">
               Cancel <kbd>Esc</kbd>
             </button>
           </div>
         </div>
       ) : (
-        <pre aria-label="Email as it will read" className="mt-2 whitespace-pre-wrap rounded bg-zinc-50 p-3 font-sans text-sm dark:bg-zinc-950">
+        <pre aria-label="Email as it will read" className="h-email">
           {outbox ? `Subject: ${outbox.subject}\n\n` : ""}
           {draft.preview}
         </pre>
       )}
 
       {draft.reasons.length && !draft.erased ? (
-        <div className="mt-2 text-sm">
-          <h3 className="font-medium">Reasons used</h3>
-          <ul className="mt-1 list-disc pl-6">
+        <div>
+          <h3 className="h-section" style={{ marginTop: 18 }}>Reasons used</h3>
+          <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
             {draft.reasons.map((r) => (
               <li key={r.source_id}>
-                {r.requirement} <span className="text-zinc-700 dark:text-zinc-400">({r.kind === "answer" ? "screening answer" : "requirement"})</span>
+                {r.requirement} <span className="h-astatus">({r.kind === "answer" ? "screening answer" : "requirement"})</span>
               </li>
             ))}
           </ul>
@@ -176,20 +176,20 @@ export function RejectionPanel(props: {
       {!draft.erased ? <Checks checks={draft.checks} /> : null}
 
       {error ? (
-        <p role="alert" className="mt-2 text-sm text-rose-800 dark:text-rose-300">
+        <p role="alert" className="h-error">
           {error}
         </p>
       ) : null}
 
       {props.state === "REJECTION_DRAFTED" && !editing ? (
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className="h-actions" style={{ marginTop: 16, alignItems: "center" }}>
           <button
             type="button"
             ref={sendRef}
             data-send
             disabled={!canSend || pending}
             onClick={send}
-            className="rounded bg-rose-700 px-3 py-1 font-medium text-white hover:bg-rose-800 disabled:opacity-60"
+            className="h-btn primary"
           >
             {pending ? "Sending" : "Send email"} <kbd>Enter</kbd>
           </button>
@@ -199,26 +199,26 @@ export function RejectionPanel(props: {
               setBody(draft.body);
               setEditing(true);
             }}
-            className="rounded border border-zinc-400 px-3 py-1"
+            className="h-btn"
           >
             Edit <kbd>e</kbd>
           </button>
-          <span className="text-xs text-zinc-700 dark:text-zinc-400">The name and address are filled in when it is sent.</span>
+          <span className="h-astatus">The name and address are filled in when it is sent.</span>
         </div>
       ) : null}
 
       {outbox ? (
-        <div className="mt-3 text-sm">
-          <p>
+        <div style={{ marginTop: 16, fontSize: 13 }}>
+          <p style={{ margin: 0 }}>
             <strong>{STATUS_LABEL[outbox.status] ?? outbox.status}</strong> · sent by {outbox.actor_id} at {when(outbox.queued_at)}
             {outbox.sent_at ? ` · delivered ${when(outbox.sent_at)}` : ""} · {outbox.attempts} attempt{outbox.attempts === 1 ? "" : "s"} ({outbox.provider})
           </p>
           {outbox.status === "failed" ? (
-            <form action={retryDelivery} className="mt-2 flex items-center gap-2">
+            <form action={retryDelivery} className="h-inline-form" style={{ marginTop: 8 }}>
               <input type="hidden" name="candidate_id" value={props.candidateId} />
               <input type="hidden" name="back" value={`/candidates/${props.candidateId}`} />
-              <span className="text-rose-800 dark:text-rose-300">{outbox.last_error}</span>
-              <button className="rounded border border-zinc-500 px-2 py-1">Retry delivery</button>
+              <span className="h-error" style={{ margin: 0 }}>{outbox.last_error}</span>
+              <button className="h-btn small">Retry delivery</button>
             </form>
           ) : null}
         </div>

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
-import { BAND_LABEL } from "@/lib/format";
+import { BAND_LABEL, stateLabel } from "@/lib/format";
 
 import { decide } from "../../actions";
 
@@ -20,14 +20,16 @@ function defaultReason(band: string | null, choice: Choice): string {
   return `Agrees with the recommendation: ${band}`;
 }
 
+/** The decision bar at the foot of the review panel. Keys: s shortlist, r reject, Enter
+ * confirms, Esc cancels, j and k next and previous in the list. */
 export function ReviewPanel(props: {
   candidateId: string;
   jobId: string | null;
   state: string;
   version: number;
   band: string | null;
-  prev: string | null;
-  next: string | null;
+  prevHref: string | null;
+  nextHref: string | null;
   erased: boolean;
 }) {
   const router = useRouter();
@@ -88,8 +90,8 @@ export function ReviewPanel(props: {
         return;
       }
       if (typing) return;
-      if (e.key === "j" && props.next) router.push(`/candidates/${props.next}`);
-      else if (e.key === "k" && props.prev) router.push(`/candidates/${props.prev}`);
+      if (e.key === "j" && props.nextHref) router.push(props.nextHref);
+      else if (e.key === "k" && props.prevHref) router.push(props.prevHref);
       else if (e.key === "s" && canDecide) open("shortlist");
       else if (e.key === "r" && canDecide) open("reject");
       else return;
@@ -100,58 +102,25 @@ export function ReviewPanel(props: {
   });
 
   return (
-    <section aria-label="Decision" className="mt-4 rounded border border-zinc-300 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-900">
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <button
-          type="button"
-          disabled={!props.prev}
-          onClick={() => props.prev && router.push(`/candidates/${props.prev}`)}
-          className="rounded border border-zinc-400 px-3 py-1 disabled:opacity-40"
-        >
-          Previous <kbd>k</kbd>
-        </button>
-        <button
-          type="button"
-          disabled={!props.next}
-          onClick={() => props.next && router.push(`/candidates/${props.next}`)}
-          className="rounded border border-zinc-400 px-3 py-1 disabled:opacity-40"
-        >
-          Next <kbd>j</kbd>
-        </button>
-        {canDecide ? (
-          <>
-            <button
-              type="button"
-              onClick={() => open("shortlist")}
-              className="rounded bg-emerald-700 px-3 py-1 font-medium text-white hover:bg-emerald-800"
-            >
-              Shortlist <kbd>s</kbd>
-            </button>
-            <button
-              type="button"
-              onClick={() => open("reject")}
-              className="rounded bg-rose-700 px-3 py-1 font-medium text-white hover:bg-rose-800"
-            >
-              Reject <kbd>r</kbd>
-            </button>
-          </>
-        ) : (
-          <span>Decision made or not available: {props.state.toLowerCase().replaceAll("_", " ")}</span>
-        )}
-      </div>
-
+    <section aria-label="Decision" className="h-bottom">
       {choice ? (
-        <div ref={box} role="dialog" aria-label={`Confirm ${choice}`} className="mt-3 space-y-2">
-          <p className="text-sm">
+        <div ref={box} role="dialog" aria-label={`Confirm ${choice}`} style={{ marginBottom: 12 }}>
+          <p style={{ margin: 0, fontSize: 13 }}>
             {choice === "shortlist" ? "Shortlist" : "Reject"} this candidate. AI recommendation:{" "}
             <strong>{props.band ? BAND_LABEL[props.band] : "none"}</strong>.
             {override ? (
-              <strong className="ml-1 text-rose-800 dark:text-rose-300">
+              <strong style={{ marginLeft: 4, color: "var(--h-red)" }}>
                 This goes against the recommendation: say why (logged for the agreement rate).
               </strong>
             ) : null}
           </p>
-          <label htmlFor="reason" className="block text-sm font-medium">
+          {choice === "reject" ? (
+            <p className="h-help">
+              Only job related reasons. The AI drafts a rejection email from the requirements this
+              person did not meet; you read it before anything is sent.
+            </p>
+          ) : null}
+          <label htmlFor="reason" className="h-label">
             Reason
           </label>
           <textarea
@@ -164,32 +133,53 @@ export function ReviewPanel(props: {
             required
             aria-invalid={tooShort}
             aria-describedby="reason-help"
-            className="w-full rounded border border-zinc-400 bg-white px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-950"
+            className="h-input"
           />
-          <p id="reason-help" className="text-xs text-zinc-700 dark:text-zinc-400">
+          <p id="reason-help" className="h-help">
             <kbd>Enter</kbd> confirms, <kbd>Shift</kbd>+<kbd>Enter</kbd> new line, <kbd>Esc</kbd> cancels.
           </p>
           {error ? (
-            <p role="alert" className="text-sm text-rose-800 dark:text-rose-300">
+            <p role="alert" className="h-error">
               {error}
             </p>
           ) : null}
-          <div className="flex gap-2">
+          <div className="h-actions" style={{ marginTop: 10, justifyContent: "flex-end" }}>
+            <button type="button" onClick={() => setChoice(null)} className="h-btn">
+              Cancel
+            </button>
             <button
               type="button"
               data-confirm
               disabled={pending}
               onClick={confirm}
-              className="rounded bg-blue-700 px-3 py-1 font-medium text-white hover:bg-blue-800 disabled:opacity-60"
+              className={`h-btn ${choice === "reject" ? "danger" : "primary"}`}
             >
               {pending ? "Saving" : `Confirm ${choice}`}
-            </button>
-            <button type="button" onClick={() => setChoice(null)} className="rounded border border-zinc-400 px-3 py-1">
-              Cancel
             </button>
           </div>
         </div>
       ) : null}
+      <div className="h-bottom-row">
+        <span className="h-astatus">
+          {canDecide ? (
+            <>
+              Your decision. <kbd>s</kbd> shortlist, <kbd>r</kbd> reject, <kbd>j</kbd> <kbd>k</kbd> next and previous
+            </>
+          ) : (
+            <>Decision made or not available: {stateLabel(props.state).toLowerCase()}</>
+          )}
+        </span>
+        {canDecide && !choice ? (
+          <div className="h-actions">
+            <button type="button" onClick={() => open("reject")} className="h-btn">
+              ✕ Reject
+            </button>
+            <button type="button" onClick={() => open("shortlist")} className="h-btn primary">
+              ✓ Shortlist
+            </button>
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }

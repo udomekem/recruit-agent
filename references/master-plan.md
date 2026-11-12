@@ -121,7 +121,31 @@ partners. So v1 ingests through an adapter layer with three sources:
 1. Our own hosted apply page (also how LinkedIn testers will try it).
 2. Email forwarding (Seek and Indeed can send applications to an inbox).
 3. Bulk upload of CVs.
+4. A connected inbox (added 2026-11-12, phase 5B): the recruiter connects a Gmail or
+   Microsoft 365 mailbox; CVs that arrive there (including Seek and Indeed application
+   emails) are ingested and matched to the open jobs on the job board.
 A Seek or Indeed connector can be added to the same adapter later.
+
+**Connected inbox, how it works (phase 5B):**
+- Connect with OAuth (Gmail API, Microsoft Graph), read only, never send. Scope it to a
+  label or folder the recruiter picks (for example "Applications"), or a dedicated
+  address; never the whole mailbox by default. Disconnect deletes the token.
+- A poller (or push: Gmail watch, Graph subscription) fetches new messages; each message
+  is ingested once (idempotency key: mailbox id + message id).
+- Attachments that look like CVs (PDF, Word) go through the existing intake: hidden
+  text removed, parse, redact. Messages with no CV are logged as "Not a CV" and skipped.
+- Matching to a job, in order: an explicit reference (job code in the subject, a plus
+  address like `jobs+da-0042@`), the Seek or Indeed subject line ("Application for Data
+  Analyst"), then an AI matcher that compares the redacted CV with the open jobs and
+  returns a job and confidence. Below the threshold, or more than one close match, the
+  CV waits in "Needs a job" for the recruiter to pick. Matching only picks a job; scoring
+  then runs as today.
+- Duplicates (same person and job) are merged, not scored twice.
+- The candidate's email comes from the sender or the CV; a candidate who did not apply
+  through our page gets the collection notice in their first email (privacy).
+- Gmail read scopes are "restricted": a public launch needs Google's security
+  assessment. Testing works with up to 100 test users. Microsoft Graph `Mail.Read` needs
+  admin consent in some tenants.
 
 ---
 
@@ -208,6 +232,7 @@ Each one is also a LinkedIn post.
 | 3 | Scoring engine + golden set + fairness and injection evals | Scorer, fairness, injection, and answer evals meet their bars in CI | "How I test an AI that judges people" |
 | 4 | Recruiter dashboard: ranked list, evidence view, shortlist / reject | Recruiter can review 50 candidates in minutes; overrides are logged for the agreement rate | The demo video |
 | 5 | Rejection email agent + guardrails + one click send | Rejection writer evals pass (zero hard rule failures), send is idempotent | "Rejection emails people actually respect" |
+| 5B | Hira dashboard redesign (design in `references/design/hira/`) + connected inbox: connect Gmail or Microsoft 365, ingest emailed CVs, match them to jobs on a job board, "Needs a job" queue | UI design approved first; then a recruiter connects a test mailbox, a forwarded Seek application lands, is matched to the right job and scored; inbox matcher evals pass; all phase 4 browser tests pass on the new UI | "My recruiting agent reads its own inbox" |
 | 6 | Screening call agent (Vapi), tested as web calls first, then phone | Simulated candidate evals pass (all personas), then real web calls, then phone | "My agent made its first call" |
 | 7 | Transcript scoring + screen report | Transcript scorer evals pass, zero invented quotes | "Scoring a conversation" |
 | 8 | Booking call + calendar invite | Booking simulation evals pass, real slot booked with invite | "Agent to calendar, zero emails" |
@@ -221,7 +246,7 @@ Each one is also a LinkedIn post.
 1. Anthropic API key (console.anthropic.com)
 2. Twilio account + Australian number (start the regulatory bundle now)
 3. Vapi account, connected to the Twilio number
-4. Google Cloud project with Calendar API enabled (OAuth client)
+4. Google Cloud project with Calendar API enabled (OAuth client); add the Gmail API for phase 5B, and a Microsoft Entra app (Graph Mail.Read) if Microsoft 365 is in scope
 5. Resend or Postmark + a sending domain
 6. Langfuse (cloud free tier)
 7. GitHub repo for recruit-agent
@@ -236,5 +261,7 @@ Keys go in `.env` (never committed). `.env.example` lists every variable.
   (knockout), expected salary (against the band), notice period, location and work
   arrangement fit, and current or most recent role.
 - Phase 3: score weights, the shortlist threshold, and final eval pass bars.
+- Phase 5B: Gmail first or Microsoft 365 first; poll or push; the matcher's confidence
+  threshold; whether one CV may be matched to more than one job.
 - Phase 6: agent voice and name; which hours to call.
 - Phase 10: hosting (Railway or Fly for API, Vercel for dashboard).

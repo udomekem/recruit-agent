@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phase 5B UI design · Recruit Agent in the Hira style</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Tokens from references/design/hira/DESIGN-BRIEF.md */
+:root{color-scheme:light dark;
+  --bg:light-dark(#f7f7f4,#16191c);--paper:light-dark(#fff,#202429);--text:light-dark(#202529,#f1f2ef);
+  --muted:light-dark(#69716f,#adb5b4);--line:light-dark(#e5e7e2,#363c40);--soft:light-dark(#f0f2ee,#292f32);
+  --blue:light-dark(#354fd5,#a4b4ff);--selected:light-dark(#eef1ff,#29334f);--green:light-dark(#32725b,#8ed2b1);
+  --green-bg:light-dark(#e9f5ee,#213d32);--red:light-dark(#a14949,#ecaaaa);--red-bg:light-dark(#fbeeee,#3d2525);
+  --amber:light-dark(#8a5a00,#f0c674);--amber-bg:light-dark(#fff5e0,#3a3020)}
+*{box-sizing:border-box}html,body{margin:0}
+body{font:14px/1.55 'DM Sans',system-ui,sans-serif;color:var(--text);background:var(--bg);padding:16px}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+h1,h2,h3,p{margin:0}[hidden]{display:none!important}
+svg.i{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.app{max-width:1280px;margin:0 auto;background:var(--bg);border:1px solid var(--line);border-radius:18px;overflow:clip}
+
+/* Header */
+.hdr{display:flex;align-items:center;gap:26px;padding:18px 29px;background:var(--paper);border-bottom:1px solid var(--line)}
+.brand{font:750 26px 'Manrope',sans-serif;letter-spacing:-1.4px;display:flex;align-items:center;gap:10px}
+.mark{display:flex;gap:3px;transform:rotate(-12deg)}.mark b{display:block;background:var(--blue);width:6px;height:24px;border-radius:3px}
+.mark b:nth-child(2){height:18px;margin-top:6px}.mark b:nth-child(3){height:12px;margin-top:12px}
+.crumb{border-left:1px solid var(--line);padding-left:22px;color:var(--muted);font-size:12px;white-space:nowrap}
+.crumb b{color:var(--text);font-weight:500}
+.nav{display:flex;gap:2px;margin-left:8px}
+.nav button{border:0;background:transparent;padding:8px 12px;border-radius:7px;color:var(--muted);font-size:13px;display:flex;gap:7px;align-items:center;white-space:nowrap}
+.nav button[aria-current=page]{background:var(--text);color:var(--paper)}
+.nav .count{font-size:11px;opacity:.8}
+.acct{margin-left:auto;display:flex;align-items:center;gap:9px}
+.acct small{display:block;color:var(--muted);font-size:11px}
+.av{display:grid;place-items:center;flex-shrink:0;width:40px;height:40px;border-radius:50%;background:var(--soft);font:600 12px 'Manrope',sans-serif}
+.acct .av{width:33px;height:33px;background:var(--selected);color:var(--blue)}
+
+/* Page */
+.content{padding:30px 29px 18px}
+.hero{display:flex;align-items:center;justify-content:space-between;gap:25px;margin-bottom:28px}
+.eyebrow{font-size:10px;letter-spacing:1.8px;text-transform:uppercase;color:var(--muted);font-weight:650;margin-bottom:7px}
+h1{font:600 35px/1.2 'Manrope',sans-serif;letter-spacing:-1.5px}
+.intro{font-size:13px;color:var(--muted);margin-top:9px;max-width:560px}
+.stats{display:flex;gap:27px}.stat{padding-left:24px;border-left:1px solid var(--line)}
+.stat strong{display:block;font:500 30px/1.3 'Manrope',sans-serif;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.stat small{color:var(--muted);font-size:11px;white-space:nowrap}.stat:last-child strong{color:var(--blue)}
+.toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:17px;flex-wrap:wrap}
+.seg{display:flex;gap:3px;flex-wrap:wrap}
+.seg button{background:transparent;border:0;padding:8px 12px;display:flex;align-items:center;gap:7px;color:var(--muted);border-radius:7px;font-size:12px}
+.seg button[aria-pressed=true]{background:var(--text);color:var(--paper)}
+.seg button span{opacity:.75;font-size:11px}
+.select{font-size:12px;background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:9px 12px;max-width:100%}
+
+/* Workbench */
+.bench{display:grid;grid-template-columns:290px minmax(0,1fr);background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:clip}
+.queue{border-right:1px solid var(--line);min-width:0}
+.search{display:flex;gap:8px;align-items:center;padding:17px 20px;border-bottom:1px solid var(--line);color:var(--muted)}
+.search input{width:100%;background:transparent;border:0;font-size:12px;min-width:0}
+.qlabel{padding:16px 20px 8px;display:flex;justify-content:space-between;color:var(--muted);font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase}
+.row{display:flex;gap:12px;width:100%;border:0;border-bottom:1px solid var(--line);padding:18px 20px;background:var(--paper);text-align:left;position:relative;align-items:flex-start}
+.row:hover{background:var(--soft)}
+.row[aria-pressed=true]{background:var(--selected)}
+.row[aria-pressed=true]:before{content:'';position:absolute;left:0;top:14px;bottom:14px;width:3px;background:var(--blue);border-radius:0 3px 3px 0}
+.row .av{width:38px;height:38px;font-size:11px}
+.rinfo{min-width:0;flex:1}.rname{font-size:13px;font-weight:650;margin-bottom:2px;display:block}
+.rrole{font-size:11px;color:var(--muted);display:block;margin-bottom:8px}
+.rbot{display:flex;justify-content:space-between;gap:6px;flex-wrap:wrap;font-size:10px;color:var(--muted)}
+.dot{display:inline-flex;gap:6px;align-items:center;font-size:11px;color:var(--muted)}
+.dot:before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.dot[data-s=Advance],.dot[data-s=Shortlisted],.dot[data-s=Matched]{color:var(--green)}
+.dot[data-s=Maybe],.dot[data-s="Needs a job"],.dot[data-s="Needs review"]{color:var(--amber)}
+.dot[data-s=Reject],.dot[data-s=Rejected]{color:var(--red)}
+.dot[data-s="To decide"]{color:var(--blue)}
+.src{font-size:10px;border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--muted)}
+.empty{padding:35px 20px;color:var(--muted);font-size:13px}
+.qfoot{padding:16px 20px;font-size:11px;color:var(--muted)}
+
+.review{min-width:0;display:flex;flex-direction:column}
+.rhead{padding:24px 27px 0}
+.kicker{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:18px}
+.mini{display:flex;gap:5px}
+.ib{width:29px;height:29px;border:1px solid var(--line);border-radius:6px;background:var(--paper);display:grid;place-items:center;padding:0}
+.ib:disabled{opacity:.3}
+.ident{display:flex;gap:16px;align-items:center}
+.ident .av{width:58px;height:58px;border-radius:17px;background:var(--selected);color:var(--blue);font-size:17px}
+h2{font:600 27px/1.2 'Manrope',sans-serif;letter-spacing:-1px}
+.tline{font-size:12px;color:var(--muted);margin-top:6px}
+.facts{display:flex;flex-wrap:wrap;gap:14px;margin:18px 0 20px;color:var(--muted);font-size:11px;align-items:center}
+.facts span{display:flex;align-items:center;gap:5px}
+.reco{display:inline-flex;align-items:baseline;gap:8px;padding:5px 10px;border-radius:8px;background:var(--soft);font-size:12px;color:var(--text)}
+.reco strong{font:600 15px 'Manrope',sans-serif}
+.tabs{display:flex;gap:23px;border-bottom:1px solid var(--line);overflow-x:auto}
+.tab{border:0;background:transparent;color:var(--muted);font-size:12px;padding:0 0 12px;position:relative;white-space:nowrap}
+.tab[aria-selected=true]{color:var(--blue);font-weight:650}
+.tab[aria-selected=true]:after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--blue)}
+.panel{padding:22px 27px 25px;min-height:420px}
+.slabel{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin:20px 0 12px;font-weight:600}
+.slabel:first-child{margin-top:0}
+.req{display:grid;grid-template-columns:96px minmax(0,1fr);gap:14px;padding:13px 0;border-bottom:1px solid var(--line)}
+.req:last-child{border-bottom:0}
+.verdict{font-size:11px;font-weight:600;border-radius:6px;padding:3px 8px;align-self:start;text-align:center}
+.verdict[data-v=met]{background:var(--green-bg);color:var(--green)}
+.verdict[data-v=partly]{background:var(--amber-bg);color:var(--amber)}
+.verdict[data-v=not]{background:var(--red-bg);color:var(--red)}
+.rq{font-size:13px;font-weight:600}.rk{font-size:10px;color:var(--muted);margin-left:6px;font-weight:500;text-transform:uppercase;letter-spacing:.8px}
+.quote{font-size:12px;line-height:1.75;color:var(--muted);margin-top:5px;border-left:2px solid var(--line);padding-left:10px}
+.summary{font-size:14px;line-height:1.85;color:var(--muted);margin-bottom:20px}
+.exp{display:grid;grid-template-columns:30px minmax(0,1fr);gap:11px;margin:0 0 18px}
+.cm{width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--line);border-radius:7px;font:600 12px 'Manrope',sans-serif;background:var(--bg)}
+.jt{font-size:13px;font-weight:650}.jm{font-size:11px;color:var(--muted);margin:3px 0 7px}.jd{font-size:12px;line-height:1.8;color:var(--muted)}
+.tags{display:flex;gap:6px;flex-wrap:wrap}.tag{font-size:11px;border:1px solid var(--line);padding:4px 9px;border-radius:6px;color:var(--muted)}
+.note-box{font-size:12px;color:var(--muted);background:var(--soft);border-radius:8px;padding:10px 12px;display:flex;gap:8px;align-items:flex-start;margin-bottom:18px}
+.email{border:1px solid var(--line);border-radius:10px;padding:18px 20px;background:var(--bg);font-size:13px;line-height:1.8;white-space:pre-wrap}
+.checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px;margin-top:14px}
+.check{font-size:11px;display:flex;gap:6px;align-items:center;color:var(--green)}
+.bottom{margin-top:auto;padding:16px 27px;border-top:1px solid var(--line);background:var(--bg);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font-weight:550;white-space:nowrap;min-height:39px}
+.btn.primary{background:#354fd5;border-color:#354fd5;color:#fff}
+.btn.danger{background:var(--red);border-color:var(--red);color:var(--paper)}
+.btn:disabled{opacity:.4;cursor:default}
+.kbd{font-size:10px;border:1px solid currentColor;border-radius:4px;padding:0 4px;opacity:.7}
+.astatus{font-size:11px;color:var(--muted)}
+.notice{padding:12px 27px;background:var(--green-bg);font-size:12px;color:var(--green);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.notice button{color:inherit;text-decoration:underline;border:0;background:transparent;font-size:12px}
+.label{display:block;font-size:12px;font-weight:600;margin:16px 0 8px}
+.input{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:11px 12px;font-size:13px}
+textarea.input{resize:vertical;min-height:150px;line-height:1.8}
+.help{font-size:11px;color:var(--muted);margin-top:8px}
+.event{padding:0 0 22px 21px;margin-left:4px;border-left:1px solid var(--line);position:relative;font-size:13px}
+.event:before{content:'';height:7px;width:7px;background:var(--blue);position:absolute;left:-4px;top:7px;border-radius:50%}
+.event small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.event p{color:var(--muted);font-size:12px;margin-top:5px}
+.back{display:none;border:0;background:transparent;color:var(--blue);font-size:12px;gap:5px;align-items:center;padding:5px 0;margin-bottom:16px}
+.footer{display:flex;justify-content:space-between;gap:12px;margin-top:15px;color:var(--muted);font-size:10px;flex-wrap:wrap}
+.footer span{display:flex;gap:5px;align-items:center}
+.app.focus .bench{grid-template-columns:minmax(0,1fr)}.app.focus .queue{display:none}
+.app.focus .panel{max-width:840px;width:100%;align-self:center}
+
+/* Tables (jobs, inbox, to do) */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:clip}
+.card+.card{margin-top:18px}
+.chead{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.chead h3{font:600 15px 'Manrope',sans-serif;letter-spacing:-.3px}
+.chead small{color:var(--muted);font-size:11px}
+.trow{display:grid;align-items:center;gap:14px;padding:15px 20px;border-bottom:1px solid var(--line);font-size:12px;width:100%;text-align:left;border-left:0;border-right:0;border-top:0;background:var(--paper)}
+.trow:last-child{border-bottom:0}
+button.trow:hover{background:var(--soft)}
+.thead{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-weight:600;padding-top:12px;padding-bottom:10px}
+.jobs .trow{grid-template-columns:minmax(0,2.2fr) 1.2fr .8fr .8fr .8fr 1fr}
+.num{font:500 18px 'Manrope',sans-serif;font-variant-numeric:tabular-nums}
+.num.blue{color:var(--blue)}
+.t1{font-size:13px;font-weight:650}.t2{font-size:11px;color:var(--muted);margin-top:2px}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;border-radius:99px;padding:3px 9px;background:var(--soft);color:var(--muted)}
+.pill.ok{background:var(--green-bg);color:var(--green)}
+.inbox .trow{grid-template-columns:minmax(0,2.4fr) minmax(0,1.6fr) minmax(0,1.4fr) 1fr}
+.how{font-size:11px;color:var(--muted)}
+.mailbox{display:flex;gap:16px;align-items:center;padding:20px;flex-wrap:wrap}
+.logo{width:44px;height:44px;border-radius:11px;border:1px solid var(--line);display:grid;place-items:center;font:700 15px 'Manrope',sans-serif;background:var(--bg)}
+.mbinfo{flex:1;min-width:200px}.mbinfo .t1{font-size:14px}
+.live{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--green)}
+.live:before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;box-shadow:0 0 0 3px var(--green-bg)}
+.rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:1px solid var(--line)}
+.rules div{padding:14px 20px;border-right:1px solid var(--line);font-size:12px}
+.rules div:last-child{border-right:0}
+.rules b{display:block;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;font-weight:600}
+.connect{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0}
+.connect>div{padding:28px}
+.connect>div+div{border-left:1px solid var(--line);background:var(--bg)}
+.provider{display:flex;gap:14px;align-items:center;width:100%;border:1px solid var(--line);border-radius:10px;background:var(--paper);padding:14px 16px;text-align:left;margin-bottom:10px}
+.provider:hover{border-color:var(--blue)}
+.provider[aria-pressed=true]{border-color:var(--blue);background:var(--selected)}
+.steps{counter-reset:s;list-style:none;padding:0;margin:0}
+.steps li{counter-increment:s;position:relative;padding:0 0 18px 34px;font-size:13px}
+.steps li:before{content:counter(s);position:absolute;left:0;top:0;width:22px;height:22px;border-radius:50%;background:var(--paper);border:1px solid var(--line);display:grid;place-items:center;font-size:11px;font-weight:600}
+.steps li.done:before{background:var(--blue);border-color:var(--blue);color:#fff;content:'✓'}
+.steps small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.modal-back{position:fixed;inset:0;background:#0006;display:grid;place-items:center;padding:16px;z-index:20}
+.modal{background:var(--paper);border-radius:14px;max-width:460px;width:100%;padding:24px;border:1px solid var(--line)}
+.modal h3{font:600 20px 'Manrope',sans-serif;letter-spacing:-.6px;margin-bottom:8px}
+.radio{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-top:8px;font-size:13px}
+.todo .trow{grid-template-columns:minmax(0,2fr) minmax(0,1.4fr) auto}
+.design-note{max-width:1280px;margin:0 auto 14px;font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.design-note b{color:var(--text)}
+
+@media(max-width:1050px){.nav button{padding:8px 9px}.crumb{display:none}}
+@media(max-width:900px){
+ .content{padding:24px 20px 16px}.hdr{padding:16px 20px;gap:16px;flex-wrap:wrap}
+ .nav{order:3;width:100%;margin:0;overflow-x:auto}
+ .bench{grid-template-columns:235px minmax(0,1fr)}
+ .stats{gap:17px}.stat{padding-left:17px}h1{font-size:30px}.stat strong{font-size:26px}
+ .rhead{padding:21px 21px 0}.panel{padding:20px 21px}.bottom{padding:15px 21px}.astatus{display:none}
+ .jobs .trow{grid-template-columns:minmax(0,2fr) .8fr .8fr .8fr}.jobs .hide-md{display:none}
+ .inbox .trow{grid-template-columns:minmax(0,2fr) minmax(0,1.6fr) 1fr}.inbox .hide-md{display:none}
+ .connect{grid-template-columns:1fr}.connect>div+div{border-left:0;border-top:1px solid var(--line)}
+}
+@media(max-width:680px){
+ body{padding:0}.app{border-radius:0;border:0}
+ .acct>div{display:none}
+ .hero{flex-direction:column;align-items:start;gap:22px;margin-bottom:22px}h1{font-size:30px}
+ .stats{width:100%;justify-content:space-between;gap:10px}.stat{padding-left:14px;flex:1}.stat:first-child{padding-left:0;border:0}
+ .content{padding:22px 14px 14px}
+ .seg{width:100%;justify-content:space-between;gap:0}.seg button{padding:8px;font-size:11px}
+ .select{width:100%}
+ .bench{display:block}.queue{border:0}.review{display:none}
+ .app.mreview .review{display:flex}.app.mreview .queue,.app.mreview .hero,.app.mreview .toolbar{display:none}
+ .app.mreview .back{display:inline-flex}
+ .app.focus:not(.mreview) .queue{display:block}
+ .rhead{padding:20px 18px 0}.panel{padding:20px 18px;min-height:340px}h2{font-size:24px}
+ .ident .av{width:48px;height:48px;border-radius:13px}
+ .bottom{padding:15px 18px}.actions{display:grid;grid-template-columns:1fr 1.5fr;width:100%}
+ .req{grid-template-columns:1fr;gap:6px}.verdict{justify-self:start}
+ .jobs .trow{grid-template-columns:minmax(0,1fr) auto}.jobs .hide-sm{display:none}
+ .inbox .trow{grid-template-columns:minmax(0,1fr) auto}.inbox .hide-sm{display:none}
+ .todo .trow{grid-template-columns:minmax(0,1fr) auto}.todo .hide-sm{display:none}
+ .rules{grid-template-columns:1fr}.rules div{border-right:0;border-bottom:1px solid var(--line)}
+ .focus-btn{display:none!important}
+ input,select,textarea{font-size:16px!important}
+}
+@media(pointer:coarse){button{min-height:44px}.ib{min-width:44px}}
+</style>
+</head>
+<body>
+<p class="design-note"><b>Phase 5B UI design, for review.</b> Interactive prototype with fictional candidates. Nothing is sent and no mailbox is connected. Try the tabs, the filters, Shortlist and Reject, and the Inbox connection.</p>
+<div class="app" id="app">
+ <header class="hdr">
+  <div class="brand"><span class="mark" aria-hidden="true"><b></b><b></b><b></b></span>hira</div>
+  <div class="crumb">Northwind Talent <span>/</span> <b>Recruitment</b></div>
+  <nav class="nav" aria-label="Main" id="nav"></nav>
+  <div class="acct"><div><p style="font-size:12px;font-weight:600">Olivia Martin</p><small>Recruiter</small></div><span class="av">OM</span></div>
+ </header>
+ <main class="content" id="main"></main>
+</div>
+
+<template id="tpl-modal"><div class="modal-back" role="dialog" aria-modal="true"><div class="modal"></div></div></template>
+
+<script>
+"use strict";
+/* ---------- icons (inline, no runtime) ---------- */
+const P={
+ search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',left:'<path d="m15 18-6-6 6-6"/>',right:'<path d="m9 18 6-6-6-6"/>',
+ pin:'<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+ brief:'<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+ mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',check:'<path d="m5 12 5 5 9-10"/>',x:'<path d="M6 6l12 12M18 6 6 18"/>',
+ expand:'<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>',lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+ eye:'<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',file:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',refresh:'<path d="M20 11a8 8 0 0 0-14.7-4.3L3 9M4 13a8 8 0 0 0 14.7 4.3L21 15"/><path d="M3 4v5h5M21 20v-5h-5"/>',
+ inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'
+};
+function icon(n){const s=document.createElementNS('http://www.w3.org/2000/svg','svg');s.setAttribute('viewBox','0 0 24 24');s.setAttribute('class','i');s.setAttribute('aria-hidden','true');s.innerHTML=P[n];return s}
+function el(tag,attrs={},...kids){const e=document.createElement(tag);for(const[k,v]of Object.entries(attrs||{})){if(v==null||v===false)continue;if(k==='class')e.className=v;else if(k.startsWith('on'))e.addEventListener(k.slice(2),v);else e.setAttribute(k,v===true?'':v)}for(const k of kids.flat()){if(k==null||k===false)continue;e.append(k instanceof Node?k:document.createTextNode(String(k)))}return e}
+
+/* ---------- fictional data ---------- */
+const JOBS=[
+ {id:'da',title:'Data Analyst',where:'Sydney NSW · hybrid',code:'DA-0042',rubric:'Ready',reqs:['Writes SQL queries for analysis and reporting','At least 3 years working as a data analyst','Builds dashboards in Power BI','Explains findings to non technical teams']},
+ {id:'rn',title:'Registered Nurse, Surgical Ward',where:'Parramatta NSW · onsite',code:'RN-0017',rubric:'Ready',reqs:['Current AHPRA registration as a Registered Nurse','At least 2 years in acute or surgical nursing','Medication administration and charting','Works rotating rosters']},
+ {id:'ss',title:'Site Supervisor (Construction)',where:'Penrith NSW · onsite',code:'SS-0008',rubric:'Ready',reqs:['Holds a current White Card','Runs WHS on site: toolbox talks, SWMS, incident reports','Supervises subcontractors and trades','Reads construction drawings']},
+ {id:'ba',title:'Business Analyst',where:'Sydney NSW · hybrid',code:'BA-0031',rubric:'Needs review',reqs:['At least 3 years as a Business Analyst','Requirements elicitation and documentation','Process mapping (BPMN or similar)','Working knowledge of SQL']}
+];
+const V={m:'met',p:'partly',n:'not'};
+const CANDS=[
+ {id:'0042',job:'da',score:84,reco:'Advance',status:'To decide',src:'Inbox',when:'Today, 9:14',years:5,city:'Sydney region',v:'mmmp',
+  q:['"Wrote SQL against a 40 table claims warehouse for weekly loss reporting"','"Five years as a data analyst across insurance and retail"','"Rebuilt the regional sales dashboards in Power BI"','"Presented monthly findings to the operations leadership group"'],
+  summary:'Data analyst with five years in insurance and retail analytics. Builds reporting pipelines in SQL and Power BI and works closely with operations teams to act on the numbers.',
+  jobs:[['Data Analyst','Harbourline Insurance','2022 to now','Owns weekly loss and claims reporting; moved 30 manual reports to scheduled SQL and Power BI.'],['Junior Analyst','Coastal Retail Group','2020 to 2022','Sales and stock analysis for 60 stores; built the first regional dashboards.']],skills:['SQL','Power BI','Python','Excel','Stakeholder reporting'],edu:'Bachelor of Commerce (Business Analytics)'},
+ {id:'0043',job:'da',score:63,reco:'Maybe',status:'To decide',src:'Apply page',when:'Today, 8:02',years:2,city:'Sydney region',v:'mpmm',
+  q:['"Daily SQL for marketing attribution queries"','"Two years as a data analyst after a research assistant role"','"Built campaign dashboards in Power BI"','"Ran fortnightly insight sessions for the brand team"'],
+  summary:'Analyst moving from research into marketing analytics. Comfortable with SQL and Power BI, keen to grow into broader business reporting.',
+  jobs:[['Marketing Data Analyst','Brightside Media','2023 to now','Attribution and campaign reporting; maintains the brand team dashboards.'],['Research Assistant','University lab','2021 to 2023','Survey data cleaning and statistical analysis in R.']],skills:['SQL','Power BI','R','Survey analysis'],edu:'Bachelor of Science (Statistics)'},
+ {id:'0044',job:'rn',score:88,reco:'Advance',status:'To decide',src:'Inbox',when:'Today, 7:40',years:6,city:'Western Sydney',v:'mmmm',
+  q:['"AHPRA registered nurse, registration current"','"Six years on a general surgical ward at a tertiary hospital"','"Medication rounds and electronic charting in every shift"','"Rotating day, evening and night rosters"'],
+  summary:'Registered nurse with six years on surgical wards, including post operative care, wound management and patient education.',
+  jobs:[['Registered Nurse','Westmead area hospital','2020 to now','General surgical ward; preceptor for new graduates.'],['Graduate Nurse','Regional base hospital','2019 to 2020','Rotations across surgical and medical wards.']],skills:['Post operative care','Wound care','Medication administration','eMR charting'],edu:'Bachelor of Nursing'},
+ {id:'0045',job:'ss',score:41,reco:'Reject',status:'To decide',src:'Upload',when:'Yesterday',years:3,city:'Blue Mountains region',v:'nppm',
+  q:['No White Card found in the CV','"Attended toolbox talks run by the site manager"','"Coordinated deliveries with two subcontractors"','"Read drawings to set out formwork"'],
+  summary:'Carpenter stepping up from leading hand. Experienced with formwork, set out and coordinating small crews.',
+  jobs:[['Leading Hand Carpenter','Ridgeline Builders','2022 to now','Formwork and set out on medium density residential sites.'],['Carpenter','Self employed','2019 to 2022','Residential renovations.']],skills:['Formwork','Set out','Crew coordination'],edu:'Certificate III in Carpentry'},
+ {id:'0046',job:'ss',score:79,reco:'Advance',status:'Shortlisted',src:'Inbox',when:'Yesterday',years:9,city:'Western Sydney',v:'mmmm',
+  q:['"Current White Card and first aid certificate"','"Ran daily toolbox talks, wrote SWMS and incident reports"','"Supervised up to 14 trades on a 6 storey build"','"Interpreted architectural and structural drawings"'],
+  summary:'Site supervisor with nine years on residential and commercial builds. Strong WHS record and calm with trades and clients.',
+  jobs:[['Site Supervisor','Ironbark Construction','2019 to now','Six storey residential builds; WHS lead on site.'],['Leading Hand','Northside Projects','2015 to 2019','Commercial fit outs.']],skills:['WHS','SWMS','Programming','Subcontractor management'],edu:'Certificate IV in Building and Construction'},
+ {id:'0047',job:'rn',score:52,reco:'Maybe',status:'Rejected',src:'Apply page',when:'2 days ago',years:1,city:'Sydney region',v:'mnmm',
+  q:['"AHPRA registration granted this year"','One year on a medical ward; no surgical experience found','"Medication rounds under supervision"','"Rotating rosters including nights"'],
+  summary:'Graduate registered nurse finishing a first year program on a medical ward.',
+  jobs:[['Graduate Registered Nurse','City hospital','2025 to now','Medical ward graduate program.']],skills:['Patient assessment','Medication administration'],edu:'Bachelor of Nursing'},
+ {id:'0048',job:'da',score:null,reco:'Needs review',status:'To decide',src:'Inbox',when:'Today, 10:31',years:null,city:'Not given',v:'',
+  q:[],summary:'The CV could not be read: the PDF is a scanned image. A recruiter needs to look at it.',jobs:[],skills:[],edu:''}
+];
+const MAIL=[
+ {id:'m1',subject:'Application for Data Analyst (DA-0042)',from:'Seek',when:'10:31',status:'Matched',job:'da',how:'Job code in the subject',cand:'0048'},
+ {id:'m2',subject:'New application: Registered Nurse, Surgical Ward',from:'Indeed',when:'9:55',status:'Needs a job',job:null,how:'Two jobs are close: Registered Nurse, Surgical Ward and Clinical Nurse (closed)',options:['rn']},
+ {id:'m3',subject:'Application for Data Analyst',from:'Seek',when:'9:14',status:'Matched',job:'da',how:'Seek subject line',cand:'0042'},
+ {id:'m4',subject:'CV attached, keen on any analyst roles',from:'Direct email',when:'8:47',status:'Needs a job',job:null,how:'AI match: Data Analyst or Business Analyst, not sure',options:['da','ba']},
+ {id:'m5',subject:'Application for Registered Nurse, Surgical Ward',from:'Seek',when:'7:40',status:'Matched',job:'rn',how:'Seek subject line',cand:'0044'},
+ {id:'m6',subject:'Re: Application for Data Analyst',from:'Direct email',when:'7:12',status:'Duplicate',job:'da',how:'Same person already applied for this job; files added to Candidate 0042'},
+ {id:'m7',subject:'Your weekly Seek job ad report',from:'Seek',when:'6:00',status:'Not a CV',job:null,how:'No CV attached; skipped'}
+];
+
+/* ---------- state ---------- */
+const S={view:'candidates',filter:'All',job:'All',q:'',sel:'0042',tab:'requirements',focus:false,mobile:false,notes:{},hist:{},undo:null,rejecting:false,
+ inbox:{connected:true,provider:'Gmail',address:'careers@northwind.example',label:'Applications',paused:false}};
+const $main=document.getElementById('main'),$app=document.getElementById('app');
+const job=id=>JOBS.find(j=>j.id===id);
+const label=c=>'Candidate '+c.id;
+const counts=()=>({All:CANDS.length,'To decide':CANDS.filter(c=>c.status==='To decide').length,Shortlisted:CANDS.filter(c=>c.status==='Shortlisted').length,Rejected:CANDS.filter(c=>c.status==='Rejected').length});
+const needsJob=()=>MAIL.filter(m=>m.status==='Needs a job').length;
+const todo=()=>CANDS.filter(c=>c.reco==='Needs review'&&c.status==='To decide').length+needsJob()+CANDS.filter(c=>c.status==='Rejected'&&!c.sent).length+JOBS.filter(j=>j.rubric!=='Ready').length;
+
+function nav(){const n=document.getElementById('nav');n.replaceChildren();
+ [['candidates','Candidates',counts()['To decide']],['jobs','Jobs',JOBS.length],['inbox','Inbox',needsJob()||null],['todo','To do',todo()]].forEach(([v,t,c])=>
+  n.append(el('button',{type:'button','aria-current':S.view===v?'page':null,onclick:()=>{S.view=v;S.mobile=false;S.rejecting=false;render()}},t,c?el('span',{class:'count'},c):null)))}
+
+function hero(eyebrow,title,intro,stats){return el('div',{class:'hero'},el('div',{},el('div',{class:'eyebrow'},eyebrow),el('h1',{},title),el('p',{class:'intro'},intro)),
+ el('div',{class:'stats'},stats.map(([n,t])=>el('div',{class:'stat'},el('strong',{},String(n).padStart(2,'0')),el('small',{},t)))))}
+
+/* ---------- Candidates ---------- */
+function filtered(){return CANDS.filter(c=>(S.filter==='All'||c.status===S.filter)&&(S.job==='All'||c.job===S.job)&&label(c).toLowerCase().includes(S.q.toLowerCase().trim()))}
+function viewCandidates(){
+ const k=counts(),list=filtered();if(!list.some(c=>c.id===S.sel))S.sel=list[0]?.id??null;
+ $main.append(hero('Screening','Your next great hire.','Ranked by how well each CV meets the job. You decide; the AI shows its evidence. Names stay hidden until you shortlist.',[[k.All,'Candidates'],[k['To decide'],'To decide'],[k.Shortlisted,'Shortlisted']]));
+ $main.append(el('div',{class:'toolbar'},
+  el('div',{class:'seg',role:'group','aria-label':'Status'},['All','To decide','Shortlisted','Rejected'].map(f=>el('button',{type:'button','aria-pressed':String(S.filter===f),onclick:()=>{S.filter=f;S.rejecting=false;S.undo=null;render()}},f==='All'?'All candidates':f,el('span',{},k[f])))),
+  el('select',{class:'select','aria-label':'Filter by job',onchange:e=>{S.job=e.target.value;render()}},el('option',{value:'All'},'All open jobs'),JOBS.map(j=>{const o=el('option',{value:j.id},j.title);if(S.job===j.id)o.selected=true;return o}))));
+ $main.append(el('button',{class:'back',type:'button',onclick:()=>{S.mobile=false;S.focus=false;S.rejecting=false;render()}},icon('left'),'All candidates'));
+ const queue=el('aside',{class:'queue','aria-label':'Candidates'},
+  el('label',{class:'search'},icon('search'),el('input',{type:'search',placeholder:'Find a candidate number…','aria-label':'Search candidates',value:S.q,oninput:e=>{S.q=e.target.value;renderKeepFocus()}})),
+  el('div',{class:'qlabel'},el('span',{},'Ranked by score'),el('span',{},list.length+' people')),
+  list.length?[...list].sort((a,b)=>(b.score??-1)-(a.score??-1)).map(c=>el('button',{type:'button',class:'row','aria-pressed':String(c.id===S.sel),onclick:()=>{S.sel=c.id;S.mobile=true;S.rejecting=false;S.undo=null;render()}},
+   el('span',{class:'av'},c.id.slice(-2)),el('span',{class:'rinfo'},el('span',{class:'rname'},label(c)),el('span',{class:'rrole'},job(c.job).title),
+    el('span',{class:'rbot'},el('span',{class:'dot','data-s':c.status==='To decide'?c.reco:c.status},c.status==='To decide'?(c.score!=null?c.reco+' · '+c.score:c.reco):c.status),el('span',{class:'src'},c.src),el('span',{},c.when))))):el('p',{class:'empty'},'No matching candidates.'),
+  el('div',{class:'qfoot'},'Highest score first. Scores are out of 100.'));
+ $main.append(el('div',{class:'bench'},queue,reviewPanel(list)));
+ $main.append(el('div',{class:'footer'},el('span',{},icon('lock'),'Personal details are hidden until shortlist; every view of them is logged'),el('span',{},'Design prototype · Fictional candidates')));
+}
+function reviewPanel(list){
+ const c=CANDS.find(x=>x.id===S.sel),sec=el('section',{class:'review','aria-label':'Candidate review'});
+ if(!c){sec.append(el('div',{class:'panel'},el('h2',{},'No candidates found'),el('p',{class:'help'},'Try another job, status or number.')));return sec}
+ const j=job(c.job),i=list.findIndex(x=>x.id===c.id);
+ const go=d=>{const n=list[i+d];if(n){S.sel=n.id;S.rejecting=false;render()}};
+ const tabs=[['requirements','Requirements'],['cv','CV'],c.status==='Rejected'?['email','Rejection email']:null,['notes','Notes'],['activity','Activity']].filter(Boolean);
+ if(!tabs.some(t=>t[0]===S.tab))S.tab='requirements';
+ sec.append(el('div',{class:'rhead'},
+  el('div',{class:'kicker'},el('span',{},i>=0?'Candidate '+String(i+1).padStart(2,'0')+' of '+String(list.length).padStart(2,'0'):'Reviewed'),
+   el('div',{class:'mini'},el('button',{type:'button',class:'ib','aria-label':'Previous candidate',disabled:i<=0,onclick:()=>go(-1)},icon('left')),el('button',{type:'button',class:'ib','aria-label':'Next candidate',disabled:i<0||i>=list.length-1,onclick:()=>go(1)},icon('right')))),
+  el('div',{class:'ident'},el('span',{class:'av'},c.id.slice(-2)),el('div',{},el('h2',{},S.revealed===c.id?'Priya Raman':label(c)),el('p',{class:'tline'},j.title+' · '+j.code))),
+  el('div',{class:'facts'},
+   c.score!=null?el('span',{class:'reco'},el('strong',{},c.score),'/ 100 · ',el('span',{class:'dot','data-s':c.reco},c.reco)):el('span',{class:'reco'},el('span',{class:'dot','data-s':'Needs review'},'Needs review')),
+   el('span',{},icon('pin'),c.city),c.years!=null?el('span',{},icon('brief'),c.years+' years of experience'):null,el('span',{},icon('inbox'),'Via '+c.src),
+   el('span',{class:'dot','data-s':c.status},c.status)),
+  el('div',{class:'tabs',role:'tablist'},tabs.map(([k,t])=>el('button',{type:'button',class:'tab',role:'tab','aria-selected':String(S.tab===k),onclick:()=>{S.tab=k;S.rejecting=false;render()}},t)))));
+ const panel=el('div',{class:'panel',role:'tabpanel'});
+ if(S.rejecting){panel.append(rejectForm(c))}
+ else if(S.tab==='requirements'){
+  if(!c.v){panel.append(el('div',{class:'note-box'},icon('info'),el('span',{},c.summary)),el('button',{type:'button',class:'btn'},icon('file'),'Open the original file'))}
+  else{const order={not:0,partly:1,met:2};
+   panel.append(el('div',{class:'note-box'},icon('info'),el('span',{},'Each verdict quotes the line in the CV it came from. Check any you are unsure of on the CV tab.')));
+   panel.append(el('h3',{class:'slabel'},'Must haves and nice to haves'));
+   j.reqs.map((r,ix)=>({r,ix,v:V[c.v[ix]]})).sort((a,b)=>order[a.v]-order[b.v]).forEach(({r,ix,v})=>panel.append(el('div',{class:'req'},
+    el('span',{class:'verdict','data-v':v},v==='met'?'Met':v==='partly'?'Partly met':'Not met'),
+    el('div',{},el('span',{class:'rq'},r),el('span',{class:'rk'},ix<2?'Must have':'Nice to have'),el('p',{class:'quote'},c.q[ix])))));
+   panel.append(el('h3',{class:'slabel'},'Screening answers'),el('div',{class:'tags'},el('span',{class:'tag'},'Right to work: yes'),el('span',{class:'tag'},'Salary: within the range'),el('span',{class:'tag'},'Notice: 4 weeks'),el('span',{class:'tag'},'Location and arrangement: yes')))}
+ } else if(S.tab==='cv'){
+  panel.append(el('div',{class:'note-box'},icon('eye'),el('span',{},'Personal details removed: name, contact details, photo, age and address are hidden for a fair review.')));
+  panel.append(el('p',{class:'summary'},c.summary));
+  if(c.jobs.length){panel.append(el('h3',{class:'slabel'},'Experience'));c.jobs.forEach(([t,co,d,x])=>panel.append(el('div',{class:'exp'},el('span',{class:'cm'},co[0]),el('div',{},el('p',{class:'jt'},t),el('p',{class:'jm'},co+' · '+d),el('p',{class:'jd'},x)))))}
+  if(c.skills.length)panel.append(el('h3',{class:'slabel'},'Skills'),el('div',{class:'tags'},c.skills.map(s=>el('span',{class:'tag'},s))));
+  if(c.edu)panel.append(el('h3',{class:'slabel'},'Education'),el('p',{style:'font-size:12px;color:var(--muted)'},c.edu));
+ } else if(S.tab==='email'){
+  panel.append(el('div',{class:'note-box'},icon('mail'),el('span',{},c.sent?'Sent. Delivered to the candidate’s inbox.':'Drafted by the AI from the requirements this person did not meet. Read it, edit if you like, then send. Nothing is sent without your click.')));
+  panel.append(el('div',{class:'email'},'Hi [first name],\n\nThank you for applying for the '+j.title+' role at Northwind Talent, and for the time you put into your application. We have decided not to take your application further for this role.\n\nThis role needs at least two years in acute or surgical nursing, and the experience in your application is on a medical ward.\n\nWe will keep your CV on file, and we wish you all the best with your search.\n\nIf you have any questions about this decision, reply to this email. You can also ask us to delete your application and data.\n\nNorthwind Talent Recruitment'));
+  panel.append(el('div',{class:'checks'},['Real reasons only','No protected attributes','No harsh words','No scores','No copied CV text','No links or contact details','No job offer wording','Length 60 to 200 words'].map(t=>el('span',{class:'check'},icon('check'),t))));
+ } else if(S.tab==='notes'){
+  panel.append(el('label',{class:'label',for:'note'},'Your notes'),el('textarea',{id:'note',class:'input',placeholder:'What stood out, questions for the screening call, your recommendation…',oninput:e=>{S.notes[c.id]=e.target.value.slice(0,1500)}}));
+  panel.querySelector('textarea').value=S.notes[c.id]||'';panel.append(el('p',{class:'help'},'Visible to the hiring team. Never sent to the candidate or the AI.'));
+ } else {
+  const ev=[...(S.hist[c.id]||[]),c.score!=null?{t:'Scored by the AI',d:c.score+' / 100, '+c.reco+' (cv-scorer v2)',w:c.when}:{t:'Sent for review',d:'The CV could not be read',w:c.when},{t:'CV received',d:c.src==='Inbox'?'From the connected inbox, matched to '+j.title:'Via '+c.src.toLowerCase(),w:c.when}];
+  panel.append(el('h3',{class:'slabel'},'History'),ev.map(e=>el('div',{class:'event'},el('div',{},e.t),el('small',{},e.w),el('p',{},e.d))));
+ }
+ sec.append(panel);
+ if(S.undo&&S.undo.id===c.id)sec.append(el('div',{class:'notice',role:'status'},el('span',{},S.undo.msg),el('button',{type:'button',onclick:()=>{c.status=S.undo.prev;(S.hist[c.id]||[]).shift();S.undo=null;render()}},'Undo')));
+ if(!S.rejecting&&c.status==='To decide')sec.append(el('div',{class:'bottom'},
+  el('span',{class:'astatus'},'Your decision. Keys: ',el('span',{class:'kbd'},'Enter'),' shortlist, ',el('span',{class:'kbd'},'R'),' reject'),
+  el('div',{class:'actions'},el('button',{type:'button',class:'btn',onclick:()=>{S.rejecting=true;render()}},icon('x'),'Reject'),
+   el('button',{type:'button',class:'btn primary',onclick:()=>decide(c,'Shortlisted','Shortlisted. Contact details are now visible.')},icon('check'),'Shortlist'))));
+ else if(!S.rejecting&&c.status==='Rejected'&&S.tab==='email'&&!c.sent)sec.append(el('div',{class:'bottom'},el('span',{class:'astatus'},'Version 1 · passed all eight checks'),
+  el('div',{class:'actions'},el('button',{type:'button',class:'btn'},'Edit'),el('button',{type:'button',class:'btn primary',onclick:()=>{c.sent=true;(S.hist[c.id]??=[]).unshift({t:'Rejection email sent',d:'By Olivia Martin',w:'Just now'});render()}},icon('mail'),'Send email'))));
+ else if(c.status==='Shortlisted'&&!S.rejecting)sec.append(el('div',{class:'bottom'},el('span',{class:'astatus'},'Shortlisted. Next: the screening call (phase 6).'),
+  el('div',{class:'actions'},el('button',{type:'button',class:'btn',onclick:()=>{S.revealed=c.id;render()}},icon('eye'),'Show contact details'))));
+ return sec}
+function rejectForm(c){const f=el('div',{});
+ f.append(el('h3',{style:'font:600 22px Manrope,sans-serif;letter-spacing:-.7px;margin-bottom:10px'},'Reject this application?'),
+  el('p',{class:'help',style:'margin-top:0'},'The AI drafts a kind email from the requirements this person did not meet. You read it before anything is sent.'),
+  el('label',{class:'label',for:'why'},'Main reason (for your records)'),
+  el('select',{id:'why',class:'input'},el('option',{value:''},'Use the requirements not met (recommended)'),el('option',{},'Experience does not meet the role'),el('option',{},'Position has been filled'),el('option',{},'Candidate withdrew')),
+  el('p',{class:'help'},'Only job related reasons. Never family, age, health or other personal circumstances.'),
+  el('div',{style:'display:flex;gap:8px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap'},
+   el('button',{type:'button',class:'btn',onclick:()=>{S.rejecting=false;render()}},'Keep reviewing'),
+   el('button',{type:'button',class:'btn danger',onclick:()=>{S.rejecting=false;decide(c,'Rejected','Rejected. A draft email is ready on the Rejection email tab.');S.tab='email';render()}},'Reject and draft email')));
+ return f}
+function decide(c,status,msg){S.undo={id:c.id,prev:c.status,msg:label(c)+' · '+msg};c.status=status;(S.hist[c.id]??=[]).unshift({t:status,d:'By Olivia Martin',w:'Just now'});render()}
+
+/* ---------- Jobs ---------- */
+function viewJobs(){
+ $main.append(hero('Job board','Open roles.','Every job has a rubric built from its ad. CVs from the apply page, uploads and your inbox are matched to these jobs.',[[JOBS.length,'Open jobs'],[CANDS.length,'Candidates'],[CANDS.filter(c=>c.src==='Inbox').length,'From your inbox']]));
+ const card=el('div',{class:'card jobs'},el('div',{class:'chead'},el('div',{},el('h3',{},'Jobs'),el('small',{},'Candidates matched from every source')),el('button',{type:'button',class:'btn primary'},icon('plus'),'New job')),
+  el('div',{class:'trow thead'},el('span',{},'Job'),el('span',{class:'hide-md hide-sm'},'Apply by email'),el('span',{class:'hide-sm'},'To decide'),el('span',{class:'hide-sm'},'Shortlisted'),el('span',{class:'hide-sm'},'Agreement'),el('span',{},'Rubric')));
+ JOBS.forEach(j=>{const cs=CANDS.filter(c=>c.job===j.id);card.append(el('button',{type:'button',class:'trow',onclick:()=>{S.view='candidates';S.job=j.id;S.filter='All';render()}},
+  el('div',{},el('div',{class:'t1'},j.title),el('div',{class:'t2'},j.where+' · '+j.code)),
+  el('span',{class:'hide-md hide-sm',style:'font-size:11px;color:var(--muted)'},'careers+'+j.code.toLowerCase()+'@northwind.example'),
+  el('span',{class:'num blue hide-sm'},cs.filter(c=>c.status==='To decide').length),el('span',{class:'num hide-sm'},cs.filter(c=>c.status==='Shortlisted').length),
+  el('span',{class:'hide-sm',style:'font-size:12px;color:var(--muted)'},cs.length>1?'92%':'Not enough yet'),
+  el('span',{class:'pill'+(j.rubric==='Ready'?' ok':'')},j.rubric)))});
+ $main.append(card);
+ $main.append(el('div',{class:'footer'},el('span',{},icon('info'),'Agreement is how often your decision matched the AI’s recommendation'),el('span',{},'Design prototype · Fictional data')));
+}
+
+/* ---------- Inbox ---------- */
+function viewInbox(){
+ const ib=S.inbox,m=MAIL;
+ $main.append(hero('Connected inbox','CVs, straight from your email.','Connect the inbox where applications arrive. New CVs are read, matched to an open job and scored. Read only: nothing is ever sent from this mailbox.',
+  [[m.length,'Emails today'],[m.filter(x=>x.status==='Matched').length,'Matched'],[needsJob(),'Need a job']]));
+ if(!ib.connected){$main.append(connectCard());return}
+ $main.append(el('div',{class:'card'},el('div',{class:'mailbox'},el('span',{class:'logo'},ib.provider==='Gmail'?'G':'M'),
+  el('div',{class:'mbinfo'},el('div',{class:'t1'},ib.address),el('div',{class:'t2'},ib.provider+' · label “'+ib.label+'” · read only')),
+  el('span',{class:'live',style:ib.paused?'color:var(--muted)':null},ib.paused?'Paused':'Checking every 2 minutes · last 10:32'),
+  el('div',{class:'actions'},el('button',{type:'button',class:'btn',onclick:()=>{ib.paused=!ib.paused;render()}},ib.paused?'Resume':'Pause'),el('button',{type:'button',class:'btn',onclick:()=>openDisconnect()},'Disconnect'))),
+  el('div',{class:'rules'},el('div',{},el('b',{},'What is read'),'Only emails with the “'+ib.label+'” label that have a PDF or Word file'),
+   el('div',{},el('b',{},'How jobs are matched'),'Job code or plus address, then the Seek or Indeed subject, then the AI. Unsure means you choose.'),
+   el('div',{},el('b',{},'Privacy'),'CVs get the same redaction as the apply page. The sender gets our collection notice.'))));
+ const card=el('div',{class:'card inbox'},el('div',{class:'chead'},el('div',{},el('h3',{},'Today’s emails'),el('small',{},'Names are hidden here too')),el('button',{type:'button',class:'btn'},icon('refresh'),'Check now')),
+  el('div',{class:'trow thead'},el('span',{},'Email'),el('span',{class:'hide-sm'},'Job'),el('span',{class:'hide-md hide-sm'},'How it was matched'),el('span',{},'Status')));
+ [...m].sort((a,b)=>(b.status==='Needs a job')-(a.status==='Needs a job')).forEach(x=>{
+  const jobCell=x.status==='Needs a job'?el('div',{},el('select',{class:'select','aria-label':'Choose a job for this CV',onchange:e=>{if(!e.target.value)return;x.job=e.target.value;x.status='Matched';x.how='Chosen by Olivia Martin';render()}},el('option',{value:''},'Choose a job…'),JOBS.map(j=>el('option',{value:j.id},(x.options.includes(j.id)?'Suggested: ':'')+j.title)))):el('span',{},x.job?job(x.job).title:'None');
+  card.append(el('div',{class:'trow'},el('div',{},el('div',{class:'t1'},x.subject),el('div',{class:'t2'},x.from+' · '+x.when)),
+   el('div',{class:'hide-sm'},jobCell),el('span',{class:'how hide-md hide-sm'},x.how),el('span',{class:'dot','data-s':x.status},x.status)))});
+ $main.append(card);
+ $main.append(el('div',{class:'footer'},el('span',{},icon('lock'),'Read only access. Disconnecting deletes the access token.'),el('span',{},el('button',{type:'button',class:'btn',style:'min-height:0;padding:4px 10px;font-size:10px',onclick:()=>{ib.connected=false;S.step=0;render()}},'Preview the not connected state'))));
+}
+function connectCard(){
+ const ib=S.inbox;S.step??=0;
+ const steps=[['Choose your email provider','Gmail or Microsoft 365 (Outlook)'],['Sign in and allow read only access','We ask for read access only; we never send from your inbox'],['Choose what to read','A label or folder, for example “Applications”, or a dedicated address'],['Done','New CVs appear in Candidates within minutes']];
+ return el('div',{class:'card'},el('div',{class:'connect'},
+  el('div',{},el('h3',{style:'font:600 20px Manrope,sans-serif;letter-spacing:-.6px;margin-bottom:6px'},'Connect your inbox'),el('p',{class:'help',style:'margin:0 0 20px'},'Where do applications arrive today? Seek and Indeed can email them to any address.'),
+   ['Gmail','Microsoft 365'].map(p=>el('button',{type:'button',class:'provider','aria-pressed':String(ib.provider===p&&S.step>0),onclick:()=>{ib.provider=p;S.step=1;render()}},el('span',{class:'logo'},p==='Gmail'?'G':'M'),el('div',{},el('div',{class:'t1'},p),el('div',{class:'t2'},p==='Gmail'?'Google Workspace or a Gmail address':'Outlook, Exchange Online')))),
+   S.step>=1?el('div',{},el('label',{class:'label',for:'lbl'},'Read emails with this label'),el('select',{id:'lbl',class:'input',onchange:e=>{ib.label=e.target.value}},['Applications','Careers','Inbox (everything, not recommended)'].map(o=>el('option',{},o))),
+    el('button',{type:'button',class:'btn primary',style:'margin-top:16px;width:100%',onclick:()=>{S.step=3;setTimeout(()=>{ib.connected=true;render()},700);render()}},'Sign in with '+ib.provider)):null,
+   el('p',{class:'help',style:'margin-top:16px'},'Prefer not to connect? Forward applications to careers+in@northwind.example instead.')),
+  el('div',{},el('ol',{class:'steps'},steps.map(([t,d],ix)=>el('li',{class:ix<S.step?'done':null},t,el('small',{},d)))))));
+}
+function openDisconnect(){const b=document.getElementById('tpl-modal').content.firstElementChild.cloneNode(true),m=b.querySelector('.modal');
+ const close=()=>b.remove();
+ m.append(el('h3',{},'Disconnect this inbox?'),el('p',{class:'help',style:'margin:0 0 6px'},'New emails stop arriving. Candidates already received stay. The access token is deleted.'),
+  el('div',{style:'display:flex;gap:8px;justify-content:flex-end;margin-top:20px'},el('button',{type:'button',class:'btn',onclick:close},'Cancel'),el('button',{type:'button',class:'btn danger',onclick:()=>{S.inbox.connected=false;S.step=0;close();render()}},'Disconnect')));
+ b.addEventListener('click',e=>{if(e.target===b)close()});document.addEventListener('keydown',function k(e){if(e.key==='Escape'){close();document.removeEventListener('keydown',k)}});
+ document.body.append(b);m.querySelector('button').focus()}
+
+/* ---------- To do ---------- */
+function viewTodo(){
+ const items=[
+  ...CANDS.filter(c=>c.reco==='Needs review'&&c.status==='To decide').map(c=>({t:label(c)+' · '+job(c.job).title,d:'The CV could not be read',a:'Open',go:()=>{S.view='candidates';S.sel=c.id;S.filter='All';S.job='All'}})),
+  ...MAIL.filter(x=>x.status==='Needs a job').map(x=>({t:x.subject,d:'CV from the inbox needs a job',a:'Choose a job',go:()=>{S.view='inbox'}})),
+  ...CANDS.filter(c=>c.status==='Rejected'&&!c.sent).map(c=>({t:label(c)+' · '+job(c.job).title,d:'Rejection email drafted, not sent',a:'Read and send',go:()=>{S.view='candidates';S.sel=c.id;S.tab='email';S.filter='All';S.job='All'}})),
+  ...JOBS.filter(j=>j.rubric!=='Ready').map(j=>({t:j.title,d:'Rubric could not be built from the ad',a:'Fix the rubric',go:()=>{S.view='jobs'}}))];
+ $main.append(hero('To do','Things waiting on you.','Everything the agent could not finish alone, in one list.',[[items.length,'Open items'],[CANDS.filter(c=>c.status==='To decide').length,'To decide'],[needsJob(),'Need a job']]));
+ const card=el('div',{class:'card todo'},el('div',{class:'chead'},el('h3',{},'Open items')));
+ if(!items.length)card.append(el('p',{class:'empty'},'Nothing waiting. Nice.'));
+ items.forEach(x=>card.append(el('div',{class:'trow'},el('div',{},el('div',{class:'t1'},x.t),el('div',{class:'t2'},x.d)),el('span',{class:'hide-sm'}),el('button',{type:'button',class:'btn',onclick:()=>{x.go();render()}},x.a))));
+ $main.append(card);
+}
+
+/* ---------- render ---------- */
+function render(){$main.replaceChildren();$app.classList.toggle('mreview',S.view==='candidates'&&S.mobile);$app.classList.toggle('focus',S.view==='candidates'&&S.focus);nav();
+ ({candidates:viewCandidates,jobs:viewJobs,inbox:viewInbox,todo:viewTodo})[S.view]()}
+function renderKeepFocus(){const pos=document.activeElement?.selectionStart;render();const i=$main.querySelector('.search input');if(i){i.focus();if(pos!=null)i.setSelectionRange(pos,pos)}}
+document.addEventListener('keydown',e=>{if(S.view!=='candidates'||S.rejecting||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.closest('.modal'))return;
+ const c=CANDS.find(x=>x.id===S.sel);if(!c||c.status!=='To decide')return;
+ if(e.key==='Enter'&&e.target===document.body){e.preventDefault();decide(c,'Shortlisted','Shortlisted. Contact details are now visible.')}
+ if(e.key.toLowerCase()==='r'){S.rejecting=true;render()}});
+render();
+</script>
+</body>
+</html>

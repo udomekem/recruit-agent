@@ -49,6 +49,15 @@ _RUNTIME: dict[str, Any] = {}
 
 def prepare_runtime(agent: str, *, max_calls: int, version: str = "v1") -> None:
     """Build the real model client once per check, with a call ceiling."""
+    if agent in ("rejection_writer", "rejection_judge"):
+        from evals.reject_agents import prepare
+
+        prepare(agent, version, max_calls)
+        if agent == "rejection_writer" and version not in NO_MODEL:
+            from evals.reject_agents import RUNTIME
+
+            _RUNTIME["llm"], _RUNTIME["tracer"] = RUNTIME["llm"], RUNTIME["tracer"]
+        return
     if agent not in ("rubric_builder", "cv_parser", "cv_scorer") or version in NO_MODEL:
         return
     from app.config import get_settings
@@ -179,7 +188,7 @@ async def cv_parser_v1(case_input: dict[str, Any]) -> dict[str, Any]:
 
 # ---- phase 3: CV scorer (whole path), planted regression, answer scorer ---------------
 
-NO_MODEL = {"v1-planted-lift"}
+NO_MODEL = {"v1-planted-lift", "v1-planted-leak"}
 _RUBRICS: dict[str, Any] = {}
 
 
@@ -290,6 +299,9 @@ async def _score_one_v1(one: dict[str, Any]) -> dict[str, Any]:
         "attempts": r.attempts,
         "model": r.model,
         "prompt_version": r.prompt_version,
+        # phase 5: the rejection writer evals draft from these
+        "reasons": {j.criterion_id: j.reason for j in r.output.judgements},
+        "redacted_text": final.text,
     }
 
 
@@ -360,6 +372,25 @@ AGENTS: dict[str, dict[str, AgentFn]] = {
     "cv_scorer": {"v1": _scorer(_score_one_v1), "v1-planted-lift": _scorer(_score_one_planted)},
     "answer_scorer": {"v1": answer_scorer_v1},
 }
+
+
+def _phase5() -> None:
+    from evals.reject_agents import (
+        reject_checks_v1,
+        rejection_judge_v1,
+        rejection_writer_planted,
+        rejection_writer_v1,
+    )
+
+    AGENTS["rejection_writer"] = {
+        "v1": rejection_writer_v1,
+        "v1-planted-leak": rejection_writer_planted,
+    }
+    AGENTS["rejection_judge"] = {"v1": rejection_judge_v1}
+    AGENTS["reject_checks"] = {"v1": reject_checks_v1}
+
+
+_phase5()
 
 
 def get_agent(name: str, version: str) -> AgentFn:

@@ -55,6 +55,7 @@ keyboard decisions, 100% agreement).
 5. **Key hints were invisible on the coloured buttons** (white on white); fixed in the stylesheet.
 6. **Answer notes said "answered False, required True"**; now "answered no, required yes".
 7. **Reading the generated dashboard password into the session was blocked** (correctly). The browser tests get it straight from `.env` inside their container instead; it is never printed.
+8. **First CI run of the browser tests failed before any test** (push `9a1d497`): `scripts/e2e.sh` sourced `.env`, and a fresh `.env` has `COMPANY_NAME=Northwind Talent (demo)`, which is not valid shell. The script now reads only the two values it needs. CI green at `d01a0da`: checks, dashboard, e2e (9 browser tests) and secret scan.
 
 ## Deviations from the design
 

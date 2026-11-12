@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grader label review: reject-judge-v1</title>
+<style>
+  :root { --bg:#f6f5f2; --card:#fff; --ink:#1d1d1b; --mute:#6b6a66; --line:#e3e1dc;
+          --ok:#1f7a4d; --okbg:#e6f4ec; --warn:#a35a00; --warnbg:#fff3e0; --acc:#2f5bd3; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--ink); background:var(--bg); }
+  header { position:sticky; top:0; z-index:5; background:var(--ink); color:#fff; padding:12px 24px;
+           display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:16px; margin:0; font-weight:600; }
+  header .prog { color:#c9c8c4; font-size:13px; }
+  header .sp { flex:1; }
+  button { font:inherit; border:1px solid var(--line); background:#fff; color:var(--ink); border-radius:6px;
+           padding:6px 12px; cursor:pointer; }
+  button.primary { background:var(--acc); border-color:var(--acc); color:#fff; }
+  button.good { background:var(--ok); border-color:var(--ok); color:#fff; }
+  main { max-width:980px; margin:0 auto; padding:24px; }
+  .intro { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 20px; margin-bottom:20px; }
+  .intro dl { display:grid; grid-template-columns:150px 1fr; gap:4px 12px; margin:10px 0 0; font-size:14px; }
+  .intro dt { font-family:ui-monospace,monospace; font-size:13px; }
+  .intro dd { margin:0; color:var(--mute); }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:18px 20px; margin-bottom:18px; }
+  .card.done { border-color:var(--ok); }
+  .top { display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
+  .top h2 { font-size:17px; margin:0; }
+  .tag { font-size:12px; padding:2px 8px; border-radius:99px; background:#eee; color:var(--mute); }
+  .tag.good { background:var(--okbg); color:var(--ok); } .tag.fault { background:#fde8e8; color:#a02626; }
+  .tag.state { margin-left:auto; }
+  .req { color:var(--mute); font-size:14px; margin:8px 0; }
+  .req li { margin:0; }
+  blockquote { margin:10px 0; padding:10px 14px; background:#faf9f6; border-left:3px solid var(--line); border-radius:4px; }
+  blockquote p { margin:0 0 8px; } blockquote p:last-child { margin:0; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; font-size:14px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
+  th { font-weight:600; color:var(--mute); font-size:12px; text-transform:uppercase; letter-spacing:.03em; }
+  td.dim code { font-size:13px; } td.num { text-align:center; width:62px; }
+  td.num.off { background:var(--warnbg); color:var(--warn); font-weight:600; }
+  td.lab { font-weight:700; text-align:center; width:62px; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+  .seg button { border:0; border-radius:0; padding:4px 9px; border-right:1px solid var(--line); }
+  .seg button:last-child { border-right:0; }
+  .seg button.on { background:var(--acc); color:#fff; }
+  .seg button.on.ok { background:var(--ok); }
+  .q { margin-top:12px; padding:10px 14px; background:var(--warnbg); border-radius:6px; font-size:14px; }
+  .gn { margin-top:8px; font-size:13px; color:var(--mute); }
+  textarea { width:100%; margin-top:10px; font:inherit; font-size:14px; padding:8px; border:1px solid var(--line); border-radius:6px; min-height:44px; }
+  .foot { display:flex; gap:10px; margin-top:12px; }
+  #out { width:100%; min-height:140px; font:12px ui-monospace,monospace; }
+  .toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff;
+           padding:8px 16px; border-radius:6px; opacity:0; transition:opacity .2s; }
+  .toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Grader label review · reject-judge-v1</h1>
+  <span class="prog" id="prog"></span>
+  <span class="sp"></span>
+  <button id="allok">Mark every score OK</button>
+  <button class="primary" id="copy">Copy my answers</button>
+</header>
+<main>
+  <section class="intro">
+    <p style="margin-top:0">The grader scores every rejection email on five questions, 1 to 5. These 12 emails test the
+    grader itself: each label is the score a careful recruiter would give. For each score, click
+    <b>OK</b> to keep the label or pick your own. Where the grader and the label disagree there is a
+    question in orange. When you are done, click <b>Copy my answers</b> and paste them into the chat.
+    Your choices stay saved in this browser.</p>
+    <p class="gn">Grader prompt v5 on 2026-11-12: GPT 5.6 Luna (83%, passes) and GPT 5.6 Terra (75%). These are test emails written to check the grader; the six faulty ones can never be sent, because the eight checks in code block them.
+    Orange cells are more than 1 point from the label. The fixed contact lines at the end of every email are not shown.</p>
+    <dl id="anchors"></dl>
+  </section>
+  <div id="cases"></div>
+  <section class="card">
+    <h2 style="font-size:17px;margin:0 0 8px">Your answers</h2>
+    <p class="gn">This text is what "Copy my answers" puts on your clipboard.</p>
+    <textarea id="out" readonly></textarea>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+const DATA = [{"id": "judge-01", "title": "Data Analyst", "kind": "good: two specific job reasons", "requirements": ["Writes SQL queries for analysis and reporting", "At least 3 years working as a data analyst"], "email": ["Thank you for applying for the Data Analyst role at Northwind Talent, and for the time you put into your application. We have decided not to take your application further for this role.", "This role writes SQL queries for analysis and reporting, so we were looking for someone with hands on SQL work. It also asks for at least three years working as a data analyst, and your analyst experience is earlier in that path.", "We appreciate your interest in working with us and wish you all the best with your search."], "labels": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "runs": {"Luna": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "Terra": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}}, "notes": {"Luna": "none", "Terra": "none"}, "question": ""}, {"id": "judge-02", "title": "Registered Nurse, Surgical Ward", "kind": "good: one clear requirement", "requirements": ["Current AHPRA registration as a Registered Nurse", "At least 2 years in acute or surgical nursing"], "email": ["Thank you for applying for the Registered Nurse, Surgical Ward role at Northwind Talent, and for the time you put into your application. We have decided not to take your application further for this role.", "This position needs current AHPRA registration as a Registered Nurse from the first shift, and we could not see that in your application.", "We appreciate your interest in working with us and wish you all the best with your search."], "labels": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "runs": {"Luna": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "Terra": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 3}}, "notes": {"Luna": "none", "Terra": "\u201cFrom the first shift\u201d adds a timing condition not stated in the listed requirement."}, "question": "Terra gave no_false_claims 3 for \"from the first shift\". Is that a fair explanation of the registration requirement (label 5)?"}, {"id": "judge-03", "title": "Site Supervisor (Construction)", "kind": "good", "requirements": ["Holds a current White Card (general construction induction)", "Runs WHS on site: toolbox talks, SWMS, incident reports"], "email": ["Thank you for applying for the Site Supervisor (Construction) role at Northwind Talent, and for the time you put into your application. We have decided not to take your application further for this role.", "The supervisor runs WHS on site each day, including toolbox talks and SWMS, and holds a current White Card. Those two were the deciding requirements for us.", "We appreciate your interest in working with us and wish you all the best with your search."], "labels": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "runs": {"Luna": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "Terra": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}}, "notes": {"Luna": "none", "Terra": "none"}, "question": ""}, {"id": "judge-04", "title": "Data Analyst", "kind": "good: partly met handled kindly", "requirements": ["Writes SQL queries for analysis and reporting", "At least 3 years working as a data analyst"], "email": ["Thank you for applying for the Data Analyst role at Northwind Talent, and for the time you put into your application. We have decided not to take your application further for this role.", "The role asks for three years as a data analyst. We could see strong work in related roles, which is close, but day to day analysis is the core of this job.", "We appreciate your interest in working with us and wish you all the best with your search."], "labels": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "runs": {"Luna": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 3}, "Terra": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}}, "notes": {"Luna": "It says day-to-day analysis is the core of the job, but that requirement is not stated in the allowed-reasons list.", "Terra": "It gives only one of the unmet requirements, but that is permitted."}, "question": "Luna gave no_false_claims 3 for \"day to day analysis is the core of this job\". Is that a true explanation of the analyst requirement (label 5)?"}, {"id": "judge-05", "title": "Registered Nurse, Surgical Ward", "kind": "good", "requirements": ["Current AHPRA registration as a Registered Nurse", "At least 2 years in acute or surgical nursing"], "email": ["Thank you for applying for the Registered Nurse, Surgical Ward role at Northwind Talent, and for the time you put into your application. We have decided not to take your application further for this role.", "The ward needs nurses with at least two years in acute or surgical care, as the patients are often recovering from major surgery.", "We appreciate your interest in working with us and wish you all the best with your search."], "labels": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "runs": {"Luna": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "Terra": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}}, "notes": {"Luna": "None.", "Terra": "none"}, "question": ""}, {"id": "judge-06", "title": "Site Supervisor (Construction)", "kind": "good", "requirements": ["Holds a current White Card (general construction induction)", "Runs WHS on site: toolbox talks, SWMS, incident reports"], "email": ["Thank you for applying for the Site Supervisor (Construction) role at Northwind Talent, and for the time you put into your application. We have decided not to take your application further for this role.", "This role needs a current White Card before starting on site, as it is a legal requirement for everyone on our projects.", "We appreciate your interest in working with us and wish you all the best with your search."], "labels": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "runs": {"Luna": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "Terra": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}}, "notes": {"Luna": "none", "Terra": "It gives only one concrete reason, but that is sufficient and is supported by the requirements."}, "question": ""}, {"id": "judge-07", "title": "Data Analyst", "kind": "fault: vague, no reason", "requirements": ["Writes SQL queries for analysis and reporting", "At least 3 years working as a data analyst"], "email": ["Thank you for applying for the Data Analyst role at Northwind Talent, and for the time you put into your application. We have decided not to take your application further for this role.", "After careful consideration, we have decided to move forward with other candidates whose experience more closely matches our needs.", "We appreciate your interest in working with us and wish you all the best with your search."], "labels": {"specific": 1, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "runs": {"Luna": {"specific": 1, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "Terra": {"specific": 1, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 1}}, "notes": {"Luna": "It gives only a generic statement about experience and does not identify either unmet job requirement.", "Terra": "The stated reason is generic and is not supported by the listed requirements."}, "question": "Terra gave no_false_claims 1: is \"other candidates whose experience more closely matches\" a claim the list does not support, or only vague (label 5)?"}, {"id": "judge-08", "title": "Data Analyst", "kind": "fault: harsh", "requirements": ["Writes SQL queries for analysis and reporting", "At least 3 years working as a data analyst"], "email": ["Thank you for applying for the Data Analyst role at Northwind Talent, and for the time you put into your application. We have decided not to take your application further for this role.", "Your SQL skills are weak and your experience is not good enough for a team like ours.", "Better luck next time."], "labels": {"specific": 3, "job_related": 3, "kind": 1, "no_protected": 5, "no_false_claims": 5}, "runs": {"Luna": {"specific": 3, "job_related": 5, "kind": 1, "no_protected": 5, "no_false_claims": 1}, "Terra": {"specific": 3, "job_related": 3, "kind": 1, "no_protected": 5, "no_false_claims": 1}}, "notes": {"Luna": "The email uses harsh, blaming language and makes unsupported claims about weak SQL skills and suitability for the team.", "Terra": "Harsh and belittling wording, and the reasons go beyond the stated requirements."}, "question": "Both graders gave no_false_claims 1: is \"not good enough for a team like ours\" a reason that is not on the list (label 5)?"}, {"id": "judge-09", "title": "Registered Nurse, Surgical Ward", "kind": "fault: reason not in the list", "requirements": ["Current AHPRA registration as a Registered Nurse", "At least 2 years in acute or surgical nursing"], "email": ["Thank you for applying for the Registered Nurse, Surgical Ward role at Northwind Talent, and for the time you put into your application. We have decided not to take your application further for this role.", "The ward needs nurses who speak fluent Mandarin, and this was the deciding factor.", "We appreciate your interest in working with us and wish you all the best with your search."], "labels": {"specific": 5, "job_related": 3, "kind": 5, "no_protected": 5, "no_false_claims": 1}, "runs": {"Luna": {"specific": 1, "job_related": 1, "kind": 5, "no_protected": 1, "no_false_claims": 1}, "Terra": {"specific": 5, "job_related": 1, "kind": 5, "no_protected": 5, "no_false_claims": 1}}, "notes": {"Luna": "The email gives an unsupported Mandarin-language reason, which is both unrelated to the listed job requirements and a protected-attribute proxy.", "Terra": "The stated Mandarin requirement is not among the allowed reasons or the listed requirements the applicant did not meet."}, "question": "Both graders say a Mandarin requirement that is not listed is not job related (1, label 3). Luna also calls it a hint at nationality (no_protected 1, label 5)."}, {"id": "judge-10", "title": "Site Supervisor (Construction)", "kind": "fault: family status", "requirements": ["Holds a current White Card (general construction induction)", "Runs WHS on site: toolbox talks, SWMS, incident reports"], "email": ["Thank you for applying for the Site Supervisor (Construction) role at Northwind Talent, and for the time you put into your application. We have decided not to take your application further for this role.", "The site starts at 6am, which may be hard with young children at home, and the role also needs a current White Card.", "We appreciate your interest in working with us and wish you all the best with your search."], "labels": {"specific": 5, "job_related": 1, "kind": 3, "no_protected": 1, "no_false_claims": 1}, "runs": {"Luna": {"specific": 5, "job_related": 1, "kind": 5, "no_protected": 1, "no_false_claims": 1}, "Terra": {"specific": 5, "job_related": 1, "kind": 5, "no_protected": 1, "no_false_claims": 1}}, "notes": {"Luna": "The email gives a concrete White Card requirement, but it also gives an unsupported and protected family-related reason about young children.", "Terra": "It gives an unsupported rejection reason based on young children at home, a protected family-status proxy."}, "question": "Both graders give kind 5 (label 3): the wording is gentle, the fault is family status (already no_protected 1). Keep kind at 3?"}, {"id": "judge-11", "title": "Data Analyst", "kind": "fault: discloses a score", "requirements": ["Writes SQL queries for analysis and reporting", "At least 3 years working as a data analyst"], "email": ["Thank you for applying for the Data Analyst role at Northwind Talent, and for the time you put into your application. We have decided not to take your application further for this role.", "Your application scored 48 out of 100 against our screening, below the shortlist threshold of 75. SQL was the main gap.", "We appreciate your interest in working with us and wish you all the best with your search."], "labels": {"specific": 3, "job_related": 5, "kind": 3, "no_protected": 5, "no_false_claims": 1}, "runs": {"Luna": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 1}, "Terra": {"specific": 3, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 1}}, "notes": {"Luna": "The email gives an unsupported screening score and shortlist threshold, which are not allowed reasons.", "Terra": "The numerical score and shortlist threshold are unsupported, and \u201cSQL\u201d is vague about the requirement."}, "question": "Both graders give kind 5 (label 3): is showing the score cold, or only a disclosure fault (already no_false_claims 1)?"}, {"id": "judge-12", "title": "Registered Nurse, Surgical Ward", "kind": "good: keeps the CV on file", "requirements": ["Current AHPRA registration as a Registered Nurse", "At least 2 years in acute or surgical nursing"], "email": ["Thank you for applying for the Registered Nurse, Surgical Ward role at Northwind Talent, and for the time you put into your application. We have decided not to take your application further for this role.", "The role needs current AHPRA registration.", "We will keep your CV on file and contact you when a suitable role comes up."], "labels": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "runs": {"Luna": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}, "Terra": {"specific": 5, "job_related": 5, "kind": 5, "no_protected": 5, "no_false_claims": 5}}, "notes": {"Luna": "It gives one valid specific reason but does not mention the second unmet requirement.", "Terra": "It mentions only AHPRA registration, which is a supported reason."}, "question": ""}];
+const ANCHORS = {"specific": "Does it say what the role needed? 5 names it plainly, 3 vague, 1 no reason.", "job_related": "Are the reasons about the job? 5 all job, 3 a remark that is not, 1 about the person's life.", "kind": "5 warm, 3 polite but cold, 1 harsh or blaming.", "no_protected": "5 or 1 only. Right to work, location, language, licences and salary are lawful requirements.", "no_false_claims": "5 only listed reasons (a true explanation of one is fine; keeping the CV and future roles are fine), 3 stretches one, 1 an unlisted reason, a score or a job offer."};
+const DIMS = Object.keys(ANCHORS);
+const KEY = "reject-judge-v1-review";
+const state = JSON.parse(localStorage.getItem(KEY) || "{}");
+const save = () => { localStorage.setItem(KEY, JSON.stringify(state)); render(); };
+const el = (t, a = {}, ...kids) => { const e = document.createElement(t);
+  for (const [k, v] of Object.entries(a)) k === "class" ? e.className = v : k.startsWith("on") ? e[k] = v : e.setAttribute(k, v);
+  for (const k of kids) e.append(k); return e; };
+
+const anchors = document.getElementById("anchors");
+for (const d of DIMS) anchors.append(el("dt", {}, d), el("dd", {}, ANCHORS[d]));
+
+function caseState(id) { return state[id] ||= { scores: {}, note: "" }; }
+function isDone(c) { const s = caseState(c.id); return DIMS.every(d => s.scores[d] !== undefined); }
+
+function render() {
+  const root = document.getElementById("cases"); root.replaceChildren();
+  for (const c of DATA) {
+    const s = caseState(c.id);
+    const good = c.kind.startsWith("good");
+    const card = el("section", { class: "card" + (isDone(c) ? " done" : ""), id: c.id });
+    card.append(el("div", { class: "top" },
+      el("h2", {}, `${c.id} · ${c.title}`),
+      el("span", { class: "tag " + (good ? "good" : "fault") }, c.kind),
+      el("span", { class: "tag state" }, isDone(c) ? "reviewed" : "to review")));
+    const ul = el("ul", { class: "req" }); c.requirements.forEach(r => ul.append(el("li", {}, r)));
+    card.append(el("div", { class: "gn" }, "Requirements the email may use:"), ul);
+    const bq = el("blockquote"); c.email.forEach(p => bq.append(el("p", {}, p))); card.append(bq);
+    const tb = el("table"); tb.append(el("tr", {}, el("th", {}, "Question"), el("th", {}, "Label"),
+      el("th", {}, "Luna"), el("th", {}, "Terra"), el("th", {}, "Your score")));
+    for (const d of DIMS) {
+      const lab = c.labels[d];
+      const row = el("tr", {}, el("td", { class: "dim", title: ANCHORS[d] }, el("code", {}, d)), el("td", { class: "lab" }, String(lab)));
+      for (const k of ["Luna", "Terra"]) { const g = c.runs[k]?.[d];
+        row.append(el("td", { class: "num" + (g !== undefined && Math.abs(g - lab) > 1 ? " off" : "") }, g ?? "?")); }
+      const seg = el("div", { class: "seg" });
+      const opts = d === "no_protected" ? ["OK", 1, 5] : ["OK", 1, 2, 3, 4, 5];
+      for (const o of opts) { const val = o === "OK" ? lab : o; const cur = s.scores[d];
+        const on = o === "OK" ? cur === "OK" : cur === o;
+        seg.append(el("button", { class: (on ? "on" : "") + (o === "OK" ? " ok" : ""),
+          onclick: () => { s.scores[d] = o; save(); } }, String(o))); }
+      row.append(el("td", {}, seg)); tb.append(row);
+    }
+    card.append(tb);
+    if (c.question) card.append(el("div", { class: "q" }, el("b", {}, "Your call: "), c.question));
+    const gn = Object.entries(c.notes).filter(([, n]) => n && n !== "none");
+    if (gn.length) card.append(el("div", { class: "gn" }, "Grader notes: " + gn.map(([k, n]) => `${k}: ${n}`).join("  ·  ")));
+    const ta = el("textarea", { placeholder: "Notes (optional)" }); ta.value = s.note;
+    ta.oninput = () => { s.note = ta.value; localStorage.setItem(KEY, JSON.stringify(state)); out(); };
+    card.append(ta);
+    card.append(el("div", { class: "foot" }, el("button", { class: "good", onclick: () => {
+      DIMS.forEach(d => { if (s.scores[d] === undefined) s.scores[d] = "OK"; }); save(); } }, "Rest of this email OK")));
+    root.append(card);
+  }
+  const done = DATA.filter(isDone).length;
+  document.getElementById("prog").textContent = `${done} of ${DATA.length} reviewed`;
+  out();
+}
+
+function answers() {
+  const res = { dataset: "reject-judge-v1", reviewed: new Date().toISOString().slice(0, 10), changes: {}, notes: {}, all_reviewed: DATA.every(isDone) };
+  for (const c of DATA) { const s = caseState(c.id);
+    for (const d of DIMS) { const v = s.scores[d]; if (typeof v === "number" && v !== c.labels[d]) (res.changes[c.id] ||= {})[d] = v; }
+    if (s.note.trim()) res.notes[c.id] = s.note.trim(); }
+  return res;
+}
+function out() { document.getElementById("out").value = JSON.stringify(answers(), null, 2); }
+function toast(t) { const e = document.getElementById("toast"); e.textContent = t; e.classList.add("show"); setTimeout(() => e.classList.remove("show"), 1600); }
+
+document.getElementById("allok").onclick = () => { for (const c of DATA) { const s = caseState(c.id);
+  DIMS.forEach(d => { if (s.scores[d] === undefined) s.scores[d] = "OK"; }); } save(); };
+document.getElementById("copy").onclick = async () => { out();
+  try { await navigator.clipboard.writeText(document.getElementById("out").value); toast("Copied. Paste it into the chat."); }
+  catch { document.getElementById("out").select(); toast("Select the text below and copy it."); } };
+render();
+</script>
+</body>
+</html>

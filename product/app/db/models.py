@@ -281,6 +281,69 @@ class AccessEvent(Base):
     )
 
 
+class RejectionDraft(Base):
+    """Phase 5. One row per version of a candidate's rejection email draft: version 1 is
+    the agent's (or the plain template); each recruiter edit adds a version. Send uses the
+    latest. Erasure clears the text and keeps the rest."""
+
+    __tablename__ = "rejection_drafts"
+    __table_args__ = (UniqueConstraint("candidate_id", "version", name="uq_draft_version"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    candidate_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidates.id"), nullable=False, index=True
+    )
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    source: Mapped[str] = mapped_column(String(10), nullable=False)  # agent|template|recruiter
+    score_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("scores.id"), nullable=True)
+    opening: Mapped[str] = mapped_column(Text, nullable=False)
+    closing: Mapped[str] = mapped_column(Text, nullable=False)
+    reasons: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    checks: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    fallback_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    needs_edit: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    prompt_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    model: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    cost_usd: Mapped[float | None] = mapped_column(nullable=True)
+    attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    erased: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    actor_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+
+class OutboundEmail(Base):
+    """Phase 5 outbox: one row per rejection send, written in the same transaction as the
+    move to REJECTION_SENT. The address, name and text are put together at delivery time
+    from the candidate and the draft, never copied here."""
+
+    __tablename__ = "outbound_emails"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    candidate_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidates.id"), nullable=False, index=True
+    )
+    draft_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("rejection_drafts.id"), nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
+    message_id: Mapped[str] = mapped_column(String(250), nullable=False, unique=True)
+    subject: Mapped[str] = mapped_column(String(300), nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(10), nullable=False
+    )  # queued|sending|sent|failed|cancelled
+    provider: Mapped[str] = mapped_column(String(10), nullable=False)  # log|mailpit|resend
+    provider_message_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actor_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    queued_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
     __table_args__ = (

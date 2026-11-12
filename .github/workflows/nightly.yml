@@ -28,7 +28,7 @@ jobs:
         run: make eval
       - name: Harness self test
         run: make eval-selftest
-      - name: Real model evals, rubric builder, CV parser and scorer (kie.ai DeepSeek, about $0.50)
+      - name: Real model evals, rubric builder, CV parser, scorer and rejection writer (kie.ai, about $0.90)
         env:
           LLM_PROVIDER: kie
           KIE_API_KEY: ${{ secrets.KIE_API_KEY }}
@@ -44,6 +44,7 @@ jobs:
           uv run python -m evals run --suite rubric || status=$?
           uv run python -m evals run --suite cv || status=$?
           uv run python -m evals run --suite score || status=$?
+          uv run python -m evals run --suite reject || status=$?
           exit $status
       - uses: actions/upload-artifact@v4
         if: always()

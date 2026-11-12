@@ -262,6 +262,10 @@ async def erase_personal_data(
         await s.execute(
             sql_update(Decision).where(Decision.candidate_id == cand.id).values(reason="")
         )
+        # Phase 5: draft text goes; an email not yet delivered is cancelled.
+        from app.rejection.outbox import cancel_on_erasure
+
+        await cancel_on_erasure(s, cand.id)
 
         # Scores keep total, band and versions for the audit record; the CV quotes,
         # reasons and answer values go (phase 3 design Q5).

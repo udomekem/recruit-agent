@@ -20,7 +20,7 @@ function config(): { url: string; token: string } {
   return { url, token };
 }
 
-async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
+async function call<T>(method: "GET" | "POST" | "PUT", path: string, body?: unknown): Promise<T> {
   const { url, token } = config();
   const res = await fetch(`${url}${path}`, {
     method,
@@ -48,6 +48,7 @@ async function call<T>(method: "GET" | "POST", path: string, body?: unknown): Pr
 export const api = {
   get: <T>(path: string) => call<T>("GET", path),
   post: <T>(path: string, body?: unknown) => call<T>("POST", path, body),
+  put: <T>(path: string, body?: unknown) => call<T>("PUT", path, body),
 };
 
 // ---- response shapes (only the fields the dashboard uses) ----------------------------
@@ -149,3 +150,52 @@ export type ScoreDetail = {
 export type ParseDetail = { redacted_text: string | null; status: string };
 
 export type Contact = { name: string | null; email: string | null; phone: string | null };
+
+// ---- rejection emails (phase 5) --------------------------------------------------------
+
+export type Check = { rule: string; passed: boolean; detail: string };
+
+export type Draft = {
+  id: string;
+  version: number;
+  source: "agent" | "template" | "recruiter";
+  reasons: { source_id: string; kind: string; requirement: string; sentence: string }[];
+  body: string;
+  preview: string;
+  checks: Check[];
+  fallback_reason: string | null;
+  needs_edit: boolean;
+  prompt: string | null;
+  model: string | null;
+  actor_id: string;
+  erased: boolean;
+  created_at: string;
+};
+
+export type Outbox = {
+  id: string;
+  status: "queued" | "sending" | "sent" | "failed" | "cancelled";
+  provider: string;
+  subject: string;
+  attempts: number;
+  last_error: string | null;
+  actor_id: string;
+  queued_at: string;
+  sent_at: string | null;
+};
+
+export type Rejection = { draft: Draft | null; versions: number; outbox: Outbox | null };
+
+export type RejectionQueue = {
+  drafts: {
+    id: string;
+    label: string;
+    job_id: string | null;
+    job_title: string | null;
+    state_version: number;
+    source: string | null;
+    needs_edit: boolean;
+    fallback_reason: string | null;
+  }[];
+  undelivered: { id: string; label: string; job_title: string | null; attempts: number; last_error: string | null }[];
+};

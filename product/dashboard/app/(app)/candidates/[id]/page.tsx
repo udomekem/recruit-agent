@@ -6,12 +6,14 @@ import {
   type CandidateDetail,
   type Contact,
   type ParseDetail,
+  type Rejection,
   type Ranked,
   type ScoreDetail,
 } from "@/lib/api";
 import { BAND_CLASS, BAND_LABEL, FLAG_LABEL, SERIOUS_FLAGS, stateLabel, when } from "@/lib/format";
 
 import { Evidence } from "./evidence";
+import { RejectionPanel } from "./rejection-panel";
 import { ReviewPanel } from "./review-panel";
 
 async function maybe<T>(p: Promise<T>): Promise<T | null> {
@@ -45,11 +47,13 @@ export default async function CandidatePage({ params }: { params: Promise<{ id: 
     !c.erased && AFTER_SHORTLIST.has(c.state)
       ? await maybe(api.get<Contact>(`/candidates/${id}/contact`))
       : null;
-  const [score, parse, ranked, access] = await Promise.all([
+  const emailStates = new Set(["REJECTED", "REJECTION_DRAFTED", "REJECTION_SENT"]);
+  const [score, parse, ranked, access, rejection] = await Promise.all([
     maybe(api.get<ScoreDetail>(`/candidates/${id}/score`)),
     maybe(api.get<ParseDetail>(`/candidates/${id}/parse`)),
     c.job_id ? api.get<Ranked>(`/jobs/${c.job_id}/candidates`) : Promise.resolve(null),
     api.get<{ events: { what: string; actor_id: string; at: string }[] }>(`/candidates/${id}/access`),
+    emailStates.has(c.state) ? maybe(api.get<Rejection>(`/candidates/${id}/rejection`)) : Promise.resolve(null),
   ]);
 
   const order = ranked?.scored ?? [];
@@ -121,6 +125,10 @@ export default async function CandidatePage({ params }: { params: Promise<{ id: 
         next={next}
         erased={c.erased}
       />
+
+      {emailStates.has(c.state) ? (
+        <RejectionPanel candidateId={id} state={c.state} version={c.state_version} rejection={rejection} />
+      ) : null}
 
       {contact ? (
         <section aria-labelledby="contact-h" className="mt-4 rounded border border-emerald-400 p-3">

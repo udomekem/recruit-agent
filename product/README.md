@@ -2,8 +2,9 @@
 
 The Recruit Agent application: jobs and AI drafted rubrics (phase 1), an apply page with
 encrypted CV storage, CV parsing with redaction (phase 2), scoring with evidence, fairness
-and injection checks (phase 3), and the recruiter dashboard (phase 4, `dashboard/`).
-Rejection emails and calls are still stubs.
+and injection checks (phase 3), the recruiter dashboard (phase 4, `dashboard/`), and
+rejection emails drafted by AI, checked by code and sent with one click (phase 5). Calls
+are still stubs.
 Run everything from Ubuntu (WSL2) in this folder.
 Setup guide: `../stages/03-build/references/dev-environment-setup.md`.
 
@@ -14,13 +15,20 @@ cp .env.example .env
 make local-env              # generates local-only secrets: recruiter token, dashboard password, MinIO login and key
 # add KIE_API_KEY (model calls) and, optionally, LANGFUSE_* keys to .env
 uv sync
-make up                     # API, worker, dashboard, Postgres, Redis, MinIO (migrations run on API start)
+make up                     # API, worker, dashboard, Postgres, Redis, MinIO, Mailpit (migrations run on API start)
 curl localhost:8000/health  # {"status":"ok","database":"ok","redis":"ok"}
 make demo-seed-offline      # demo jobs and synthetic candidates, no model needed
 ```
 
 Then open http://localhost:3000 and sign in with `DASHBOARD_PASSWORD` from `.env`. Keys on a
 candidate: `s` shortlist, `r` reject, `Enter` confirm, `j` / `k` next and previous.
+
+Rejection emails (phase 5): after a reject the worker drafts the email (the writer needs
+`KIE_API_KEY`; without it the plain template is used). On the candidate page read it,
+`e` to edit, `Enter` to send. Every draft and every edit passes eight hard rule checks
+first. Sent emails land in the local test inbox at http://localhost:8025 (Mailpit):
+nothing leaves the machine. The review queue lists drafts to send and emails not
+delivered.
 
 Tests and the fast evals need no API key: `make services && make test && make eval`.
 
@@ -35,6 +43,7 @@ Tests and the fast evals need no API key: `make services && make test && make ev
 | `make eval` | Fast eval suite; exit 0 pass, 1 a bar failed, 2 harness error |
 | `make eval-selftest` | Planted regressions must fail the gate (proves the gate works), including a scorer that lifts injected CVs |
 | `make eval-rubric` / `make eval-cv` / `make eval-score` | Real model evals: rubric builder, CV parser, and the CV scorer with fairness and injection pairs (about $0.40) |
+| `make eval-reject` | Rejection writer (DeepSeek) graded by a GPT judge, judge calibration, fairness and injection (about $0.40) |
 | `make smoke` | One real model call (kie.ai DeepSeek by default) through the LLM client; prints the Langfuse trace URL |
 | `make migrate` | Apply database migrations |
 | `make demo-seed-offline` / `make demo-seed` | Demo jobs and candidates: no model, or through the API with the real model (about $0.15) |
@@ -68,12 +77,16 @@ Recruiter actions: `shortlist`, `reject`, `send-rejection`, `advance`, `resolve-
 | `app/observability/tracing.py` | Langfuse, no-op and recording tracers |
 | `app/api/main.py` | Recruiter API |
 | `app/workers/worker.py` | arq worker |
+| `app/rejection/` | Phase 5: reason sources, hard rule checks, the draft step, edits, the outbox and delivery |
+| `app/integrations/email.py` | Email providers: log (tests), Mailpit (local), Resend (real, switched off) |
 | `evals/` | Harness, suites (thresholds), datasets (synthetic only), reports |
 | `migrations/` | Alembic |
 
 ## Safety defaults
 
-No email, call, or calendar code exists yet, and `EMAIL_SENDING_ENABLED`,
-`PHONE_CALLS_ENABLED` and `CALENDAR_BOOKING_ENABLED` default to false. CI uses a fake
+`EMAIL_SENDING_ENABLED`, `PHONE_CALLS_ENABLED` and `CALENDAR_BOOKING_ENABLED` default to
+false. Rejection emails go only to the local Mailpit inbox (`EMAIL_PROVIDER=mailpit`, set
+by Docker Compose) or nowhere (`log`, the default). Real sending (`resend`) needs the
+switch on, a key and a sending domain. No call or calendar code exists yet. CI uses a fake
 model and no tracer, so it needs no secrets. `.env` is gitignored and CI fails if one is
 tracked.

@@ -61,6 +61,20 @@ class Settings(BaseSettings):
     phone_calls_enabled: bool = False
     calendar_booking_enabled: bool = False
 
+    # Rejection emails (phase 5). `log` sends nothing; `mailpit` is the local test inbox;
+    # `resend` sends for real only when email_sending_enabled is true and a key is set.
+    email_provider: Literal["log", "mailpit", "resend"] = "log"
+    email_from: str = "Northwind Talent Recruitment <careers@northwind.example>"
+    email_reply_to: str = "careers@northwind.example"
+    email_timeout_seconds: float = 10.0
+    email_delivery_max_attempts: int = Field(default=5, ge=1)
+    email_retry_base_seconds: int = Field(default=60, ge=0)
+    mailpit_smtp_host: str = "localhost"
+    mailpit_smtp_port: int = 1025
+    mailpit_api_url: str = "http://localhost:8025"
+    resend_api_key: SecretStr | None = None
+    resend_url: str = "https://api.resend.com/emails"
+
     # Intake (phase 1)
     company_name: str = "Northwind Talent (demo)"
     cv_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1024)
@@ -79,6 +93,7 @@ class Settings(BaseSettings):
         "langfuse_secret_key",
         "s3_access_key",
         "s3_secret_key",
+        "resend_api_key",
         mode="before",
     )
     @classmethod

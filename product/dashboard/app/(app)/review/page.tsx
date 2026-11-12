@@ -1,8 +1,8 @@
 import Link from "next/link";
 
-import { api } from "@/lib/api";
+import { api, type RejectionQueue } from "@/lib/api";
 
-import { resolve } from "../actions";
+import { resolve, retryDelivery } from "../actions";
 
 type Queue = {
   candidates: {
@@ -23,7 +23,10 @@ export default async function ReviewPage({
   searchParams: Promise<{ error?: string; done?: string }>;
 }) {
   const s = await searchParams;
-  const q = await api.get<Queue>("/review-queue");
+  const [q, emails] = await Promise.all([
+    api.get<Queue>("/review-queue"),
+    api.get<RejectionQueue>("/rejections/queue"),
+  ]);
   return (
     <>
       <h1 className="text-2xl font-semibold">Review queue</h1>
@@ -101,6 +104,48 @@ export default async function ReviewPage({
           </ul>
         </>
       ) : null}
+      <h2 className="mt-8 text-lg font-semibold">Rejection emails to send</h2>
+      {emails.drafts.length === 0 ? (
+        <p className="mt-2 text-sm">No drafts waiting.</p>
+      ) : (
+        <ul aria-label="Rejection emails to send" className="mt-2 space-y-1 text-sm">
+          {emails.drafts.map((d) => (
+            <li key={d.id}>
+              <Link href={`/candidates/${d.id}`} className="text-blue-800 underline dark:text-blue-300">
+                {d.label}
+              </Link>{" "}
+              ({d.job_title ?? "no job"})
+              {d.needs_edit ? (
+                <span className="ml-2 rounded bg-amber-100 px-2 py-0.5 text-amber-950 dark:bg-amber-900 dark:text-amber-50">
+                  read first: {d.fallback_reason}
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+      <h2 className="mt-8 text-lg font-semibold">Emails not delivered</h2>
+      {emails.undelivered.length === 0 ? (
+        <p className="mt-2 text-sm">None.</p>
+      ) : (
+        <ul aria-label="Emails not delivered" className="mt-2 space-y-2 text-sm">
+          {emails.undelivered.map((u) => (
+            <li key={u.id}>
+              <form action={retryDelivery} className="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="candidate_id" value={u.id} />
+                <input type="hidden" name="back" value="/review?done=1" />
+                <Link href={`/candidates/${u.id}`} className="text-blue-800 underline dark:text-blue-300">
+                  {u.label}
+                </Link>
+                <span>
+                  ({u.job_title ?? "no job"}): {u.attempts} attempts, {u.last_error}
+                </span>
+                <button className="rounded border border-zinc-500 px-2 py-1">Retry delivery</button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
     </>
   );
 }

@@ -18,18 +18,22 @@ import uuid
 
 from app.agents.rubric_builder import build_rubric
 from app.config import Settings
-from app.db.models import CvParse, Score
+from app.db.models import CvParse, RejectionDraft, Score
 from app.db.session import SessionMaker
 from app.domain.jobs import JobState
 from app.domain.states import SYSTEM_STEPS, ActorType, CandidateState
 from app.intake.parse import run_parse
+from app.integrations.email import EmailSender, make_sender
 from app.integrations.storage import Storage
 from app.llm.client import LLMClient, LLMError
 from app.observability.tracing import Tracer
+from app.rejection.outbox import deliver
+from app.rejection.step import run_draft
 from app.scoring.step import run_score
 from app.workflow.decisions import request_rescore, rescore_candidate
 from app.workflow.dispatch import (
     AdvanceJob,
+    DeliveryJob,
     Dispatcher,
     InlineDispatcher,
     RescoreJob,
@@ -62,6 +66,7 @@ class Pipeline:
         steps: StubSteps | None = None,
         llm: LLMClient | None = None,
         storage: Storage | None = None,
+        email: EmailSender | None = None,
     ) -> None:
         self.sessions = sessions
         self.dispatcher = dispatcher
@@ -70,6 +75,7 @@ class Pipeline:
         self.steps = steps or StubSteps()
         self.llm = llm
         self.storage = storage
+        self.email = email or make_sender(settings)
 
     async def schedule(self, cand: Snapshot) -> None:
         """Queue the next system step if the candidate's state has one."""
@@ -195,6 +201,10 @@ class Pipeline:
             scored = await self._score_real(cand)
             if scored != "stub":
                 return scored  # type: ignore[return-value]
+        if step == "draft_rejection":
+            drafted = await self._draft_real(cand)
+            if drafted != "stub":
+                return drafted  # type: ignore[return-value]
 
         with self.tracer.span(
             f"step:{step}",
@@ -343,6 +353,69 @@ class Pipeline:
         await self.schedule(moved)
         return moved
 
+    async def _draft_real(self, cand: Snapshot) -> Snapshot | None | str:
+        """Phase 5 draft. Returns "stub" to fall back to the stub (test candidates)."""
+        with self.tracer.span(
+            "step:draft_rejection",
+            candidate_id=str(cand.id),
+            step="draft_rejection",
+            from_state=cand.state.value,
+            prompt_version="rejection-writer-v2",
+            model=self.settings.model_extraction,
+            input_tokens=0,
+            output_tokens=0,
+            cost_usd=0.0,
+        ) as span:
+            decision = await run_draft(
+                self.sessions,
+                self.llm,
+                cand.id,
+                company=self.settings.company_name,
+                production=self.settings.environment == "production",
+            )
+            if decision.use_stub:
+                span.update(outcome="stub")
+                return "stub"
+            span.update(**decision.trace)
+            row = decision.row
+
+            def add_row(s: object, c: object) -> None:
+                if row is not None:
+                    s.add(RejectionDraft(candidate_id=cand.id, **row))  # type: ignore[attr-defined]
+
+            try:
+                moved = await apply_transition(
+                    self.sessions,
+                    candidate_id=cand.id,
+                    to_state=decision.to_state,
+                    actor_type=ActorType.SYSTEM,
+                    actor_id="worker:draft_rejection",
+                    reason=decision.reason,
+                    expected_state=cand.state,
+                    expected_version=cand.state_version,
+                    trace_id=self.tracer.current_trace_id(),
+                    extra=add_row,
+                )
+            except StaleTransition:
+                span.update(outcome="stale")
+                return None
+        await self.schedule(moved)
+        return moved
+
+    async def queue_delivery(self, outbox_id: uuid.UUID, attempt: int = 0, defer: int = 0) -> None:
+        await self.dispatcher.enqueue(DeliveryJob(outbox_id, attempt, defer_seconds=defer))
+
+    async def deliver_email(self, outbox_id: uuid.UUID, attempt: int = 0) -> str:
+        """Deliver one outbox email; on a retryable failure queue the next attempt."""
+        with self.tracer.span(
+            "step:deliver_email", candidate_id="none", outbox_id=str(outbox_id)
+        ) as span:
+            result = await deliver(self.sessions, self.email, outbox_id, settings=self.settings)
+            span.update(outcome=result.status, attempts=result.attempts, provider=self.email.name)
+        if result.status == "retry":
+            await self.queue_delivery(outbox_id, result.attempts, result.retry_in)
+        return result.status
+
     async def _run_with_retries(
         self, step: str, cand: Snapshot
     ) -> tuple[StepOutcome | None, int, str | None]:
@@ -400,6 +473,8 @@ class Pipeline:
                 await self.build_rubric(job.job_id, job.expected_state, job.expected_version)
             elif isinstance(job, RescoreJob):
                 await self.rescore(job.candidate_id)
+            elif isinstance(job, DeliveryJob):
+                await self.deliver_email(job.outbox_id, job.attempt)
             else:
                 await self.advance(job.candidate_id, job.expected_state, job.expected_version)
             ran += 1

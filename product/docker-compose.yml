@@ -4,6 +4,10 @@ x-app-env: &app-env
   DATABASE_URL: postgresql+psycopg://recruit:recruit@postgres:5432/recruit
   REDIS_URL: redis://redis:6379/0
   S3_ENDPOINT_URL: http://minio:9000
+  # Phase 5: rejection emails go to the local Mailpit inbox (http://localhost:8025)
+  EMAIL_PROVIDER: mailpit
+  MAILPIT_SMTP_HOST: mailpit
+  MAILPIT_API_URL: http://mailpit:8025
 
 services:
   postgres:
@@ -44,6 +48,11 @@ services:
     ports: ["9000:9000", "127.0.0.1:9001:9001"]
     volumes: [miniodata:/data]
 
+  # Local test inbox for rejection emails (phase 5). Nothing leaves the machine.
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
+
   api:
     build: .
     env_file:
@@ -56,6 +65,7 @@ services:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
       minio: {condition: service_started}
+      mailpit: {condition: service_started}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 5s

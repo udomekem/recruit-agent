@@ -1,4 +1,5 @@
-"""arq worker: runs `advance` jobs. Start with `arq app.workers.worker.WorkerSettings`.
+"""arq worker: runs `advance`, rubric, rescore and email delivery jobs.
+Start with `arq app.workers.worker.WorkerSettings`.
 
 Retries inside a step are handled by the pipeline. arq's own `max_tries` covers the job
 being lost (worker killed mid job): the job is re-run, and because every job carries the
@@ -79,11 +80,19 @@ async def rescore(ctx: dict[str, Any], candidate_id: str) -> str:
     return result
 
 
+async def deliver_email(ctx: dict[str, Any], outbox_id: str, attempt: int = 0) -> str:
+    pipeline: Pipeline = ctx["pipeline"]
+    result = await pipeline.deliver_email(uuid.UUID(outbox_id), attempt)
+    pipeline.tracer.flush()
+    return result
+
+
 class WorkerSettings:
     functions: ClassVar[list[Any]] = [
         advance,
         func(build_rubric_job, name="build_rubric"),
         rescore,
+        deliver_email,
     ]
     on_startup = startup
     on_shutdown = shutdown

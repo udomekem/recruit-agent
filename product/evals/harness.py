@@ -148,10 +148,18 @@ def determinism(cases: list[Case], runs: Runs) -> tuple[float, float, list[dict[
 
 def metrics() -> dict[str, MetricFn]:
     from evals.cv_metrics import METRICS as CV
+    from evals.reject_metrics import METRICS as REJECT
     from evals.rubric_metrics import METRICS as RUBRIC
     from evals.score_metrics import METRICS as SCORE
 
-    return {"exact_match": exact_match, "determinism": determinism, **RUBRIC, **CV, **SCORE}
+    return {
+        "exact_match": exact_match,
+        "determinism": determinism,
+        **RUBRIC,
+        **CV,
+        **SCORE,
+        **REJECT,
+    }
 
 
 # ---- running -------------------------------------------------------------------------
@@ -444,6 +452,10 @@ def push_to_langfuse(report: Report, settings: Any) -> list[str]:
                 )
             if _agent == "cv_parser":
                 return Evaluation(name="field_accuracy", value=cv_item_score(case, output))
+            if _agent in ("rejection_writer", "rejection_judge", "reject_checks"):
+                from evals.reject_metrics import item_score as reject_item
+
+                return Evaluation(name="reject_ok", value=reject_item(case, output))
             if _agent in ("cv_scorer", "answer_scorer"):
                 from evals.score_metrics import item_score as score_item
 

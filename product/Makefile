@@ -1,7 +1,7 @@
 # Thin wrappers over Python entry points. Run from product/ inside Ubuntu (WSL2).
 UV ?= uv
 
-.PHONY: help local-env up down services logs migrate test lint typecheck eval eval-full eval-rubric eval-cv eval-score eval-selftest smoke ci demo-seed demo-seed-offline dashboard-check e2e
+.PHONY: help local-env up down services logs migrate test lint typecheck eval eval-full eval-rubric eval-cv eval-score eval-reject eval-selftest smoke ci demo-seed demo-seed-offline dashboard-check e2e
 
 help:
 	@grep -E '^[a-z-]+:' Makefile | cut -d: -f1
@@ -44,6 +44,7 @@ eval-full:     ## full suite (nightly)
 eval-selftest: ## passes only if the planted regression makes the gate fail
 	$(UV) run python -m evals run --suite selftest
 	$(UV) run python -m evals run --suite selftest-score
+	$(UV) run python -m evals run --suite selftest-reject
 
 smoke:         ## one real LLM call (needs ANTHROPIC_API_KEY); prints the trace URL
 	$(UV) run python -m app.cli smoke
@@ -55,6 +56,9 @@ eval-rubric:   ## rubric builder with the real model (kie.ai DeepSeek, about $0.
 
 eval-cv:       ## CV parser and redaction with the real model (kie.ai DeepSeek)
 	$(UV) run python -m evals run --suite cv
+
+eval-reject:   ## rejection writer, judge, fairness, injection (real models, about $$0.40)
+	$(UV) run python -m evals run --suite reject
 
 eval-score:    ## CV scorer, fairness, injection with the real model (kie.ai DeepSeek, about $$0.40)
 	$(UV) run python -m evals run --suite score

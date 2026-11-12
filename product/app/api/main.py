@@ -18,7 +18,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
-from app.api import dashboard_api, intake_api, jobs_api, scores_api
+from app.api import dashboard_api, intake_api, jobs_api, rejection_api, scores_api
 from app.config import Settings, get_settings
 from app.db.models import Candidate as CandidateRow
 from app.db.session import make_engine, make_sessionmaker
@@ -283,13 +283,6 @@ def create_app(
     ) -> CandidateOut:
         return await decide(p, candidate_id, actor, body, S.REJECTED)
 
-    @app.post("/candidates/{candidate_id}/send-rejection")
-    async def send_rejection(
-        candidate_id: uuid.UUID, body: Decision, actor: Recruiter, p: Pl
-    ) -> CandidateOut:
-        # Phase 0: records the send decision only. No email is sent (EMAIL_SENDING_ENABLED=false).
-        return await decide(p, candidate_id, actor, body, S.REJECTION_SENT)
-
     @app.post("/candidates/{candidate_id}/advance")
     async def advance(
         candidate_id: uuid.UUID, body: Decision, actor: Recruiter, p: Pl
@@ -312,11 +305,11 @@ def create_app(
     intake_api.register(app, cfg, Recruiter, Pl, Store)
     scores_api.register(app, Recruiter, Pl)
     dashboard_api.register(app, Recruiter, Pl)
+    rejection_api.register(app, cfg, Recruiter, Pl)
 
     _ = (
         shortlist,
         reject,
-        send_rejection,
         advance,
         resolve_retry,
         withdraw,

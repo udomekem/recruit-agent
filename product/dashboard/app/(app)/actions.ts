@@ -80,3 +80,58 @@ export async function rescore(form: FormData): Promise<void> {
   const res = await api.post<{ queued: number }>(`/jobs/${jobId}/rescore`);
   redirect(`/jobs/${jobId}?rescoring=${res.queued}`);
 }
+
+// ---- rejection emails (phase 5) --------------------------------------------------------
+
+export async function saveDraft(input: {
+  candidateId: string;
+  body: string;
+  expectedDraftVersion: number;
+}): Promise<ActionResult> {
+  await requireSession();
+  try {
+    await api.put(`/candidates/${input.candidateId}/rejection`, {
+      body: input.body,
+      expected_draft_version: input.expectedDraftVersion,
+    });
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 422) {
+      return { error: `Not saved. ${e.detail}` };
+    }
+    return message(e);
+  }
+  revalidatePath(`/candidates/${input.candidateId}`);
+  return {};
+}
+
+export async function sendRejection(input: {
+  candidateId: string;
+  expectedVersion: number;
+}): Promise<ActionResult> {
+  await requireSession();
+  try {
+    await api.post(`/candidates/${input.candidateId}/send-rejection`, {
+      reason: "rejection email sent",
+      expected_version: input.expectedVersion,
+    });
+  } catch (e) {
+    return message(e);
+  }
+  revalidatePath(`/candidates/${input.candidateId}`);
+  revalidatePath("/review");
+  return {};
+}
+
+export async function retryDelivery(form: FormData): Promise<void> {
+  await requireSession();
+  const id = String(form.get("candidate_id"));
+  const back = String(form.get("back") ?? `/candidates/${id}`);
+  try {
+    await api.post(`/candidates/${id}/rejection/retry-delivery`);
+  } catch (e) {
+    const r = message(e);
+    redirect(`/review?error=${encodeURIComponent(r.error ?? "failed")}`);
+  }
+  revalidatePath("/review");
+  redirect(/^\/[a-z]/.test(back) ? back : "/review"); // same site paths only
+}

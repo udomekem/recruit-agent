@@ -46,7 +46,21 @@ class RescoreJob:
         return f"rescore:{self.candidate_id}:{self.rubric_id}"
 
 
-QueuedJob = AdvanceJob | RubricJob | RescoreJob
+@dataclass(frozen=True)
+class DeliveryJob:
+    """Phase 5: deliver one outbox email. The attempt is in the id so a retry after a
+    failure is a new job (arq ignores a repeated id)."""
+
+    outbox_id: uuid.UUID
+    attempt: int = 0
+    defer_seconds: int = 0
+
+    @property
+    def queue_id(self) -> str:
+        return f"email:{self.outbox_id}:{self.attempt}"
+
+
+QueuedJob = AdvanceJob | RubricJob | RescoreJob | DeliveryJob
 
 
 class Dispatcher(Protocol):
@@ -69,6 +83,15 @@ class ArqDispatcher:
             return
         if isinstance(job, RescoreJob):
             await self._pool.enqueue_job("rescore", str(job.candidate_id), _job_id=job.queue_id)
+            return
+        if isinstance(job, DeliveryJob):
+            await self._pool.enqueue_job(
+                "deliver_email",
+                str(job.outbox_id),
+                job.attempt,
+                _job_id=job.queue_id,
+                _defer_by=job.defer_seconds or None,
+            )
             return
         await self._pool.enqueue_job(
             "advance",

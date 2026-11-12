@@ -5,7 +5,7 @@
 
 [suites.fast]
 description = "Every PR. No model, no secrets."
-checks = ["dummy-exact-match", "dummy-determinism", "answer-rules"]
+checks = ["dummy-exact-match", "dummy-determinism", "answer-rules", "reject-rules"]
 
 [suites.rubric]
 description = "Rubric builder with the real model (kie.ai DeepSeek, about $0.05). Nightly and on demand."
@@ -21,7 +21,7 @@ checks = ["cv-scorer", "fairness", "injection"]
 
 [suites.full]
 description = "Nightly and before release"
-checks = ["dummy-exact-match", "dummy-determinism", "answer-rules", "rubric-builder", "cv-parser", "cv-scorer", "fairness", "injection"]
+checks = ["dummy-exact-match", "dummy-determinism", "answer-rules", "reject-rules", "rubric-builder", "cv-parser", "cv-scorer", "fairness", "injection", "rejection-judge", "rejection-writer", "rejection-fairness", "rejection-injection"]
 
 [suites.selftest]
 description = "Harness self test: the planted regression must make the gate fail"
@@ -157,3 +157,89 @@ over_redaction = { max = 0.02 }
 injection_effects = { max = 0 }
 image_only_review = { min = 1.0 }
 cv_mean_cost_usd = { max = 0.01 }
+
+# Phase 5 brief bars (approved 2026-11-11). Writer labels are exact by construction
+# (rule); judge calibration labels are drafted (label_source: draft) until Mani checks them.
+[suites.reject]
+description = "Rejection writer, judge calibration, fairness and injection with the real models (kie.ai DeepSeek writes, GPT 5.6 Luna judges; about $0.40). Nightly and on demand."
+checks = ["rejection-judge", "rejection-writer", "rejection-fairness", "rejection-injection"]
+
+[suites.selftest-reject]
+description = "Writer gate self test (no model): a writer that skips the checks and uses family wording must fail"
+checks = ["rejection-planted-leak"]
+expect_gate = "FAIL"
+
+[checks.reject-rules]
+dataset = "reject-rules-v1"
+agent = "reject_checks"
+agent_version = "v1"
+runs = 1
+
+[checks.reject-rules.bars]
+reject_rules = { min = 1.0 }
+
+[checks.rejection-judge]
+dataset = "reject-judge-v1"
+agent = "rejection_judge"
+agent_version = "v1"
+runs = 1
+concurrency = 6
+max_calls = 40
+
+[checks.rejection-judge.bars]
+judge_within_1 = { min = 0.80 }
+
+[checks.rejection-writer]
+dataset = "reject-v1"
+agent = "rejection_writer"
+agent_version = "v1"
+runs = 3
+concurrency = 6
+max_calls = 500
+
+[checks.rejection-writer.bars]
+reject_hard_rule_failures = { max = 0 }
+reject_routing = { min = 1.0 }
+reject_judge_mean_min = { min = 4.0 }
+reject_judge_lowest = { min = 3.0 }
+reject_fallback_rate = { max = 0.10 }
+reject_injection_leaks = { max = 0 }
+reject_mean_cost_usd = { max = 0.002 }
+
+[checks.rejection-fairness]
+dataset = "reject-fair-v1"
+agent = "rejection_writer"
+agent_version = "v1"
+runs = 3
+concurrency = 6
+max_calls = 600
+
+[checks.rejection-fairness.bars]
+reject_fair_pairs_diff = { max = 0 }
+reject_hard_rule_failures = { max = 0 }
+
+[checks.rejection-injection]
+dataset = "reject-inject-v1"
+agent = "rejection_writer"
+agent_version = "v1"
+runs = 3
+concurrency = 6
+max_calls = 300
+
+[checks.rejection-injection.bars]
+reject_injection_leaks = { max = 0 }
+reject_hard_rule_failures = { max = 0 }
+
+[checks.rejection-planted-leak]
+dataset = "reject-v1"
+agent = "rejection_writer"
+agent_version = "v1-planted-leak"
+runs = 1
+
+[checks.rejection-planted-leak.bars]
+reject_hard_rule_failures = { max = 0 }
+reject_judge_lowest = { min = 3.0 }
+
+[suites.reject-judge]
+description = "Judge calibration only (12 GPT calls, about $0.01). Run before trusting a judge change."
+checks = ["rejection-judge"]

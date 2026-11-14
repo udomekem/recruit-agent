@@ -18,6 +18,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -44,6 +45,8 @@ class Job(Base):
     state_version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     review_return_state: Mapped[str | None] = mapped_column(String(40), nullable=True)
     title: Mapped[str] = mapped_column(String(120), nullable=False)
+    # Phase 5B: short code for email subjects and plus addresses (DA-0042)
+    code: Mapped[str | None] = mapped_column(String(20), nullable=True, unique=True)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     location: Mapped[str] = mapped_column(String(120), nullable=False)
     work_arrangement: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -326,7 +329,11 @@ class OutboundEmail(Base):
     candidate_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("candidates.id"), nullable=False, index=True
     )
-    draft_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("rejection_drafts.id"), nullable=False)
+    # Phase 5B: kind rejection (draft_id set) or acknowledgement (no draft)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False, default="rejection")
+    draft_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("rejection_drafts.id"), nullable=True
+    )
     idempotency_key: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
     message_id: Mapped[str] = mapped_column(String(250), nullable=False, unique=True)
     subject: Mapped[str] = mapped_column(String(300), nullable=False)
@@ -363,5 +370,138 @@ class AuditEvent(Base):
     idempotency_key: Mapped[str] = mapped_column(String(200), nullable=False)
     trace_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+
+# ---- Phase 5B: connected inbox ----------------------------------------------------------
+
+
+class Mailbox(Base):
+    """A connected inbox. Read only; one label. The refresh token is encrypted at rest and
+    cleared on disconnect."""
+
+    __tablename__ = "mailboxes"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    provider: Mapped[str] = mapped_column(String(10), nullable=False)  # gmail|mailpit|fake
+    address: Mapped[str] = mapped_column(String(320), nullable=False)
+    label: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False
+    )  # active|paused|needs_label|needs_reconnect|disconnected
+    token_ciphertext: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    scopes: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    checkpoint: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_polled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    connected_by: Mapped[str] = mapped_column(String(120), nullable=False)
+    connected_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    disconnected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class MailboxEvent(Base):
+    """Audit for mailboxes: connect, label, pause, resume, disconnect, errors."""
+
+    __tablename__ = "mailbox_events"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    mailbox_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("mailboxes.id"), nullable=False, index=True
+    )
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    actor_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+
+class OAuthState(Base):
+    """One time state and PKCE verifier for a connect flow (bound to the recruiter)."""
+
+    __tablename__ = "oauth_states"
+
+    state: Mapped[str] = mapped_column(String(64), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(10), nullable=False)
+    code_verifier: Mapped[str] = mapped_column(String(128), nullable=False)
+    actor_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class InboxMessage(Base):
+    """One email seen under the label. The raw email is never stored: only the redacted
+    subject and, through the candidate, the CV attachments."""
+
+    __tablename__ = "inbox_messages"
+    __table_args__ = (
+        UniqueConstraint("mailbox_id", "provider_message_id", name="uq_inbox_message"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    mailbox_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("mailboxes.id"), nullable=False, index=True
+    )
+    provider_message_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    subject_redacted: Mapped[str] = mapped_column(String(300), nullable=False, default="")
+    sender_kind: Mapped[str] = mapped_column(String(10), nullable=False, default="other")
+    status: Mapped[str] = mapped_column(
+        String(12), nullable=False
+    )  # received|not_a_cv|ingested|duplicate|failed
+    match_route: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    detail: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utcnow
+    )
+
+
+class InboxAttachment(Base):
+    __tablename__ = "inbox_attachments"
+    __table_args__ = (UniqueConstraint("message_id", "position", name="uq_inbox_attachment"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("inbox_messages.id"), nullable=False, index=True
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    original_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    media_type: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    outcome: Mapped[str] = mapped_column(String(12), nullable=False)  # ingested|duplicate|skipped
+    note: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    candidate_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("candidates.id"), nullable=True, index=True
+    )
+
+
+class JobMatch(Base):
+    """One job matcher run for a candidate who arrived without a job."""
+
+    __tablename__ = "job_matches"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    candidate_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidates.id"), nullable=False, index=True
+    )
+    fits: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    chosen_job_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    outcome: Mapped[str] = mapped_column(String(12), nullable=False)  # auto_matched|needs_job
+    reason: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    prompt_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    model: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    cost_usd: Mapped[float | None] = mapped_column(nullable=True)
+    attempts: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=utcnow
     )

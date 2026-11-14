@@ -34,6 +34,7 @@ from app.db.models import (
     RejectionDraft,
 )
 from app.db.session import SessionMaker
+from app.domain.notice import acknowledgement_text
 from app.domain.states import ActorType, CandidateState
 from app.integrations.email import EmailError, EmailSender, OutgoingEmail
 from app.rejection.checks import CheckResult, all_passed, failures, run_checks
@@ -79,14 +80,14 @@ async def latest_draft(s: AsyncSession, candidate_id: uuid.UUID) -> RejectionDra
     ).scalar_one_or_none()
 
 
-async def latest_outbox(s: AsyncSession, candidate_id: uuid.UUID) -> OutboundEmail | None:
+async def latest_outbox(
+    s: AsyncSession, candidate_id: uuid.UUID, kind: str | None = "rejection"
+) -> OutboundEmail | None:
+    q = select(OutboundEmail).where(OutboundEmail.candidate_id == candidate_id)
+    if kind is not None:
+        q = q.where(OutboundEmail.kind == kind)
     return (
-        await s.execute(
-            select(OutboundEmail)
-            .where(OutboundEmail.candidate_id == candidate_id)
-            .order_by(OutboundEmail.queued_at.desc())
-            .limit(1)
-        )
+        await s.execute(q.order_by(OutboundEmail.queued_at.desc()).limit(1))
     ).scalar_one_or_none()
 
 
@@ -275,18 +276,29 @@ async def deliver(
             row.last_error = "candidate erased before delivery"
             return Delivery("cancelled", attempts=row.attempts)
         crashed = row.status == "sending"
-        draft = await s.get(RejectionDraft, row.draft_id)
+        if row.kind == "acknowledgement":
+            job = await s.get(Job, cand.job_id) if cand.job_id else None
+            text = acknowledgement_text(
+                first_name=first_name_of(cand.full_name),
+                company=settings.company_name,
+                job_title=job.title if job else None,
+                reply_to=settings.email_reply_to,
+            )
+        else:
+            draft = await s.get(RejectionDraft, row.draft_id) if row.draft_id else None
+            text = full_text(
+                draft.body if draft is not None else "",
+                first_name=first_name_of(cand.full_name),
+                company=settings.company_name,
+                reply_to=settings.email_reply_to,
+            )
+        kind = row.kind
         msg = OutgoingEmail(
             to=cand.email or "",
             sender=settings.email_from,
             reply_to=settings.email_reply_to,
             subject=row.subject,
-            text=full_text(
-                draft.body if draft is not None else "",
-                first_name=first_name_of(cand.full_name),
-                company=settings.company_name,
-                reply_to=settings.email_reply_to,
-            ),
+            text=text,
             message_id=row.message_id,
         )
         candidate_id, mid = row.candidate_id, row.message_id
@@ -335,7 +347,7 @@ async def deliver(
     await _audit(
         sessions,
         candidate_id,
-        f"rejection email delivered ({sender.name}, attempt {attempt})",
+        f"{kind} email delivered ({sender.name}, attempt {attempt})",
         f"{outbox_id}:sent",
     )
     return Delivery("sent", attempts=attempt)
@@ -353,8 +365,15 @@ async def requeue_failed(
             raise CandidateNotFound(str(candidate_id))
         if cand.erased_at is not None:
             raise CandidateErased("this candidate's data was erased")
-        row = await latest_outbox(s, candidate_id)
-        if row is None or row.status != "failed":
+        row = (
+            await s.execute(
+                select(OutboundEmail)
+                .where(OutboundEmail.candidate_id == candidate_id, OutboundEmail.status == "failed")
+                .order_by(OutboundEmail.queued_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if row is None:
             raise SendRefused("only an email that was not delivered can be retried")
         row.status = "queued"
         row.attempts = 0

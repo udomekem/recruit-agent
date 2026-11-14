@@ -67,6 +67,7 @@ export type Flag = { kind: string; text: string };
 export type JobSummary = {
   id: string;
   title: string;
+  code: string | null;
   state: string;
   location: string;
   approved_rubric_version: number | null;
@@ -198,4 +199,50 @@ export type RejectionQueue = {
     fallback_reason: string | null;
   }[];
   undelivered: { id: string; label: string; job_title: string | null; attempts: number; last_error: string | null }[];
+};
+
+// ---- connected inbox (phase 5B) ------------------------------------------------------------
+
+export type MailboxOut = {
+  id: string;
+  provider: "gmail" | "mailpit" | "fake";
+  address: string;
+  label: string | null;
+  status: "active" | "paused" | "needs_label" | "needs_reconnect" | "disconnected";
+  last_polled_at: string | null;
+  last_error: string | null;
+  connected_by: string;
+  connected_at: string;
+};
+
+export type InboxAttachmentOut = {
+  outcome: "ingested" | "duplicate" | "skipped";
+  note: string;
+  candidate_id: string | null;
+  label: string | null;
+  state: string | null;
+  state_version: number | null;
+  job_title: string | null;
+  needs_job: boolean;
+  suggested: string[];
+  match: string | null;
+};
+
+export type InboxMessageOut = {
+  id: string;
+  mailbox_id: string;
+  subject: string;
+  sender_kind: "seek" | "indeed" | "direct" | "other";
+  status: "received" | "working" | "not_a_cv" | "ingested" | "duplicate" | "failed";
+  route: string | null;
+  detail: string;
+  received_at: string;
+  attachments: InboxAttachmentOut[];
+};
+
+export type InboxPage = {
+  mailboxes: MailboxOut[];
+  messages: InboxMessageOut[];
+  open_jobs: { id: string; title: string; code: string | null }[];
+  can_connect: { gmail: boolean; mailpit: boolean };
 };

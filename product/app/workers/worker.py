@@ -8,10 +8,11 @@ state and version it was queued for, a re-run after the move happened is a no-op
 
 from __future__ import annotations
 
+import time
 import uuid
 from typing import Any, ClassVar
 
-from arq import func
+from arq import cron, func
 from arq.connections import RedisSettings
 
 from app.config import get_settings
@@ -87,13 +88,39 @@ async def deliver_email(ctx: dict[str, Any], outbox_id: str, attempt: int = 0) -
     return result
 
 
+async def poll_inbox(ctx: dict[str, Any], mailbox_id: str) -> str:
+    pipeline: Pipeline = ctx["pipeline"]
+    result = await pipeline.poll_inbox(uuid.UUID(mailbox_id))
+    pipeline.tracer.flush()
+    return result
+
+
+async def process_inbox_message(ctx: dict[str, Any], message_id: str) -> str:
+    pipeline: Pipeline = ctx["pipeline"]
+    result = await pipeline.process_inbox_message(uuid.UUID(message_id))
+    pipeline.tracer.flush()
+    return result
+
+
+async def poll_inboxes(ctx: dict[str, Any]) -> int:
+    """Cron: queue a poll for every active mailbox (phase 5B brief Q3: every 2 minutes)."""
+    pipeline: Pipeline = ctx["pipeline"]
+    return await pipeline.poll_all_inboxes(int(time.time() // _settings.inbox_poll_seconds))
+
+
+_POLL_MINUTES = set(range(0, 60, max(1, _settings.inbox_poll_seconds // 60)))
+
+
 class WorkerSettings:
     functions: ClassVar[list[Any]] = [
         advance,
         func(build_rubric_job, name="build_rubric"),
         rescore,
         deliver_email,
+        poll_inbox,
+        process_inbox_message,
     ]
+    cron_jobs: ClassVar[list[Any]] = [cron(poll_inboxes, minute=_POLL_MINUTES, run_at_startup=True)]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = RedisSettings.from_dsn(_settings.redis_url)

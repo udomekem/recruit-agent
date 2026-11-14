@@ -21,6 +21,7 @@ dependencies = [
     "boto3>=1.43.126",
     "pdfminer-six>=20260107",
     "python-docx>=1.2.0",
+    "cryptography>=45",
 ]
 
 [dependency-groups]

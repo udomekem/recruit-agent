@@ -32,6 +32,8 @@ def generated() -> dict[str, str]:
         "MINIO_KMS_SECRET_KEY": "recruit-key:" + base64.b64encode(os.urandom(32)).decode(),
         "S3_ACCESS_KEY": user,
         "S3_SECRET_KEY": password,
+        # phase 5B: Fernet key for stored inbox tokens
+        "INBOX_TOKEN_KEY": base64.urlsafe_b64encode(os.urandom(32)).decode(),
     }
 
 

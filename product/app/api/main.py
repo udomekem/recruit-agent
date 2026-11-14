@@ -18,7 +18,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
-from app.api import dashboard_api, intake_api, jobs_api, rejection_api, scores_api
+from app.api import dashboard_api, inbox_api, intake_api, jobs_api, rejection_api, scores_api
 from app.config import Settings, get_settings
 from app.db.models import Candidate as CandidateRow
 from app.db.session import make_engine, make_sessionmaker
@@ -306,6 +306,7 @@ def create_app(
     scores_api.register(app, Recruiter, Pl)
     dashboard_api.register(app, Recruiter, Pl)
     rejection_api.register(app, cfg, Recruiter, Pl)
+    inbox_api.register(app, cfg, Recruiter, Pl)
 
     _ = (
         shortlist,

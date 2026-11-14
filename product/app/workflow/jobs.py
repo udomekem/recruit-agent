@@ -74,6 +74,12 @@ def _key(job_id: uuid.UUID, transition_id: str, from_version: int) -> str:
     return f"{job_id}:{transition_id}:v{from_version}"
 
 
+def job_code(title: str, n: int) -> str:
+    """Short code for subjects and plus addresses: two initials and a number (DA-0042)."""
+    letters = "".join(w[0] for w in title.split() if w[:1].isalpha()).upper()[:2] or "JB"
+    return f"{letters.ljust(2, 'X')}-{n:04d}"
+
+
 async def create_job(
     sessions: SessionMaker, fields: JobFields, custom: list[QuestionSpec], *, actor_id: str
 ) -> JobSnapshot:
@@ -86,8 +92,10 @@ async def create_job(
     assert t is not None
     jid = uuid.uuid4()
     async with sessions() as s, s.begin():
+        count = (await s.execute(select(func.count()).select_from(Job))).scalar_one()
         job = Job(
             id=jid,
+            code=job_code(fields.title, int(count) + 1),
             state=J.DRAFT,
             state_version=1,
             title=fields.title,

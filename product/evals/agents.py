@@ -49,6 +49,11 @@ _RUNTIME: dict[str, Any] = {}
 
 def prepare_runtime(agent: str, *, max_calls: int, version: str = "v1") -> None:
     """Build the real model client once per check, with a call ceiling."""
+    if agent == "job_matcher":
+        from evals.match_agents import prepare as prepare_match
+
+        prepare_match(max_calls)
+        return
     if agent in ("rejection_writer", "rejection_judge"):
         from evals.reject_agents import prepare
 
@@ -391,6 +396,16 @@ def _phase5() -> None:
 
 
 _phase5()
+
+
+def _phase5b() -> None:
+    from evals.match_agents import job_matcher_v1, match_rules_v1
+
+    AGENTS["match_rules"] = {"v1": match_rules_v1}
+    AGENTS["job_matcher"] = {"v1": job_matcher_v1}
+
+
+_phase5b()
 
 
 def get_agent(name: str, version: str) -> AgentFn:

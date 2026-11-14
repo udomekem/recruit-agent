@@ -74,3 +74,6 @@ dashboard-check: ## dashboard type check, unit tests, secret check (in Docker)
 
 e2e:           ## dashboard browser tests in the Playwright image (needs make up)
 	bash scripts/e2e.sh
+
+eval-match: ## Job matcher evals with the real model (phase 5B, about $0.10)
+	uv run python -m evals run --suite match

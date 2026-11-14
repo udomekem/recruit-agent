@@ -75,6 +75,7 @@ _EXPLICIT: list[Transition] = [
     Transition("T20", S.NEEDS_REVIEW, RETURN_TO_SAVED, REC, "resolve: retry"),
     Transition("T21", S.NEEDS_REVIEW, S.REJECTED, REC, "resolve: reject"),
     Transition("T23", None, S.APPLIED, CAN, "apply via the apply page"),
+    Transition("T24", None, S.APPLIED, SYS, "ingested from a connected inbox"),
 ]
 
 _HAS_EXPLICIT_REVIEW = {t.from_state for t in _EXPLICIT if t.to_state == S.NEEDS_REVIEW}

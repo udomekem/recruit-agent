@@ -64,6 +64,7 @@ def register(app: FastAPI, Recruiter: Any, Pl: Any) -> None:  # noqa: N803
                 {
                     "id": str(j.id),
                     "title": j.title,
+                    "code": j.code,
                     "state": j.state,
                     "location": j.location,
                     "approved_rubric_version": versions.get(j.id),

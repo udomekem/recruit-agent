@@ -31,3 +31,22 @@ CONSENT_LABEL = (
     "I have read this notice and agree to my application being assessed with AI assistance "
     "as described."
 )
+
+
+def acknowledgement_text(
+    *, first_name: str | None, company: str, job_title: str | None, reply_to: str
+) -> str:
+    """Sent once to each candidate ingested from a connected inbox (phase 5B brief Q6).
+    They never saw the apply page, so this carries the collection notice. No decision,
+    no score, no promise."""
+    role = f"the {job_title} role" if job_title else "a role with us"
+    lines = [
+        f"Hi {first_name}," if first_name else "Hi,",
+        f"Thank you for your application for {role} at {company}. We have received your CV.",
+        "How we handle your application:",
+        *(f"- {p}" for p in notice_text(company)),
+        f"If you have any questions, or want us to delete your application and data, reply "
+        f"to this email or contact {reply_to}.",
+        f"{company} Recruitment",
+    ]
+    return "\n\n".join(lines)

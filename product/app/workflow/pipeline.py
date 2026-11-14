@@ -16,12 +16,16 @@ import asyncio
 import logging
 import uuid
 
+from sqlalchemy import select
+
 from app.agents.rubric_builder import build_rubric
 from app.config import Settings
-from app.db.models import CvParse, RejectionDraft, Score
+from app.db.models import AuditEvent, Candidate, CvParse, JobMatch, Mailbox, RejectionDraft, Score
 from app.db.session import SessionMaker
 from app.domain.jobs import JobState
 from app.domain.states import SYSTEM_STEPS, ActorType, CandidateState
+from app.inbox.ingest import ProviderFactory, make_provider, poll, process_message
+from app.inbox.match import run_match
 from app.intake.parse import run_parse
 from app.integrations.email import EmailSender, make_sender
 from app.integrations.storage import Storage
@@ -35,6 +39,8 @@ from app.workflow.dispatch import (
     AdvanceJob,
     DeliveryJob,
     Dispatcher,
+    InboxMessageJob,
+    InboxPollJob,
     InlineDispatcher,
     RescoreJob,
     RubricJob,
@@ -67,6 +73,7 @@ class Pipeline:
         llm: LLMClient | None = None,
         storage: Storage | None = None,
         email: EmailSender | None = None,
+        mailboxes: ProviderFactory | None = None,
     ) -> None:
         self.sessions = sessions
         self.dispatcher = dispatcher
@@ -76,6 +83,7 @@ class Pipeline:
         self.llm = llm
         self.storage = storage
         self.email = email or make_sender(settings)
+        self.mailboxes = mailboxes or make_provider(settings)
 
     async def schedule(self, cand: Snapshot) -> None:
         """Queue the next system step if the candidate's state has one."""
@@ -198,6 +206,9 @@ class Pipeline:
             if parsed != "stub":
                 return parsed  # type: ignore[return-value]
         if step == "score":
+            matched = await self._match_real(cand)
+            if matched != "continue":
+                return matched  # type: ignore[return-value]
             scored = await self._score_real(cand)
             if scored != "stub":
                 return scored  # type: ignore[return-value]
@@ -304,6 +315,122 @@ class Pipeline:
                 return None
         await self.schedule(moved)
         return moved
+
+    async def _match_real(self, cand: Snapshot) -> Snapshot | None | str:
+        """Phase 5B: an inbox candidate with no job gets one before scoring, or goes to
+        review "needs a job". Returns "continue" when scoring should run now."""
+        async with self.sessions() as s:
+            c = await s.get(Candidate, cand.id)
+            if c is None or c.job_id is not None or c.source != "inbox":
+                return "continue"
+        with self.tracer.span(
+            "step:match",
+            candidate_id=str(cand.id),
+            step="match",
+            from_state=cand.state.value,
+            prompt_version="job-matcher-v2",
+            model=self.settings.model_extraction,
+            input_tokens=0,
+            output_tokens=0,
+            cost_usd=0.0,
+        ) as span:
+            d = await run_match(self.sessions, self.llm, cand.id, settings=self.settings)
+            span.update(outcome="matched" if d.job_id else "needs_job")
+        if d.job_id is not None:
+            async with self.sessions() as s, s.begin():
+                c = (
+                    await s.execute(
+                        select(Candidate).where(Candidate.id == cand.id).with_for_update()
+                    )
+                ).scalar_one()
+                if c.state != S.PARSED or c.state_version != cand.state_version or c.job_id:
+                    return None  # moved meanwhile
+                c.job_id = d.job_id
+                s.add(JobMatch(candidate_id=c.id, **d.row))
+                s.add(
+                    AuditEvent(
+                        candidate_id=c.id,
+                        transition_id="MATCH",
+                        from_state=S.PARSED,
+                        to_state=S.PARSED,
+                        actor_type=ActorType.SYSTEM,
+                        actor_id="worker:match",
+                        reason=d.reason,
+                        idempotency_key=f"{c.id}:match:v{c.state_version}",
+                        trace_id=self.tracer.current_trace_id(),
+                    )
+                )
+            return "continue"
+        row = d.row
+
+        def add_row(s: object, c: object) -> None:
+            s.add(JobMatch(candidate_id=cand.id, **row))  # type: ignore[attr-defined]
+
+        try:
+            moved = await apply_transition(
+                self.sessions,
+                candidate_id=cand.id,
+                to_state=S.NEEDS_REVIEW,
+                actor_type=ActorType.SYSTEM,
+                actor_id="worker:match",
+                reason=d.reason,
+                expected_state=cand.state,
+                expected_version=cand.state_version,
+                trace_id=self.tracer.current_trace_id(),
+                extra=add_row,
+            )
+        except StaleTransition:
+            return None
+        await self.schedule(moved)
+        return moved
+
+    # ---- connected inbox (phase 5B) ----------------------------------------------------
+
+    async def poll_all_inboxes(self, window: int) -> int:
+        async with self.sessions() as s:
+            ids = list(
+                (
+                    await s.execute(
+                        select(Mailbox.id).where(
+                            Mailbox.status == "active", Mailbox.label.is_not(None)
+                        )
+                    )
+                ).scalars()
+            )
+        for mid in ids:
+            await self.dispatcher.enqueue(InboxPollJob(mid, window))
+        return len(ids)
+
+    async def poll_inbox(self, mailbox_id: uuid.UUID) -> str:
+        async def enqueue(message_id: uuid.UUID) -> None:
+            await self.dispatcher.enqueue(InboxMessageJob(message_id))
+
+        with self.tracer.span(
+            "step:poll_inbox", candidate_id="none", mailbox_id=str(mailbox_id)
+        ) as span:
+            r = await poll(
+                self.sessions, self.mailboxes, enqueue, mailbox_id, settings=self.settings
+            )
+            span.update(outcome=r.status, new=r.new, requeued=r.requeued)
+        return r.status
+
+    async def process_inbox_message(self, message_id: uuid.UUID) -> str:
+        if self.storage is None:
+            raise RuntimeError("no storage configured")
+        with self.tracer.span(
+            "step:inbox_message", candidate_id="none", message_id=str(message_id)
+        ) as span:
+            status = await process_message(
+                self.sessions,
+                self.storage,
+                self.mailboxes,
+                message_id,
+                settings=self.settings,
+                schedule=self.schedule,
+                queue_email=self.queue_delivery,
+            )
+            span.update(outcome=status)
+        return status
 
     async def _score_real(self, cand: Snapshot) -> Snapshot | None | str:
         """Phase 3 score. Returns "stub" to fall back to the stub (test candidates)."""
@@ -475,6 +602,10 @@ class Pipeline:
                 await self.rescore(job.candidate_id)
             elif isinstance(job, DeliveryJob):
                 await self.deliver_email(job.outbox_id, job.attempt)
+            elif isinstance(job, InboxPollJob):
+                await self.poll_inbox(job.mailbox_id)
+            elif isinstance(job, InboxMessageJob):
+                await self.process_inbox_message(job.message_id)
             else:
                 await self.advance(job.candidate_id, job.expected_state, job.expected_version)
             ran += 1

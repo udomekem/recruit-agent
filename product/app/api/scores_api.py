@@ -44,54 +44,61 @@ def _knockouts(score: Score) -> list[dict[str, Any]]:
     ]
 
 
-def register(app: FastAPI, Recruiter: Any, Pl: Any) -> None:  # noqa: N803
-    @app.get("/jobs/{job_id}/candidates")
-    async def ranked_candidates(job_id: uuid.UUID, _: Recruiter, p: Pl) -> JSONResponse:
-        """Scored candidates by total (highest first, ties by apply time), then the rest."""
-        async with p.sessions() as s:
-            if await s.get(Job, job_id) is None:
-                return JSONResponse(
-                    status_code=404, content={"error": "not_found", "detail": "no such job"}
-                )
-            current = await _latest_approved_version(s, job_id)
-            cands = (
-                (await s.execute(select(Candidate).where(Candidate.job_id == job_id)))
-                .scalars()
-                .all()
+async def rank_jobs(s: Any, job_ids: list[uuid.UUID]) -> dict[uuid.UUID, dict[str, Any]]:
+    """Scored candidates by total (highest first, ties by apply time), then the rest, for
+    each job. Three queries however many jobs."""
+    versions = {
+        r.job_id: int(r.v)
+        for r in (
+            await s.execute(
+                select(Rubric.job_id, func.max(Rubric.version).label("v"))
+                .where(Rubric.job_id.in_(job_ids), Rubric.approved_at.is_not(None))
+                .group_by(Rubric.job_id)
             )
-            scores = (
-                (
-                    await s.execute(
-                        select(Score)
-                        .join(Candidate, Candidate.id == Score.candidate_id)
-                        .where(Candidate.job_id == job_id)
-                        .order_by(Score.created_at)
-                    )
-                )
-                .scalars()
-                .all()
+        ).all()
+    }
+    cands = (
+        (await s.execute(select(Candidate).where(Candidate.job_id.in_(job_ids)))).scalars().all()
+    )
+    scores = (
+        (
+            await s.execute(
+                select(Score)
+                .join(Candidate, Candidate.id == Score.candidate_id)
+                .where(Candidate.job_id.in_(job_ids))
+                .order_by(Score.created_at)
             )
-            decisions = (
-                (
-                    await s.execute(
-                        select(Decision)
-                        .join(Candidate, Candidate.id == Decision.candidate_id)
-                        .where(Candidate.job_id == job_id)
-                        .order_by(Decision.created_at)
-                    )
-                )
-                .scalars()
-                .all()
+        )
+        .scalars()
+        .all()
+    )
+    decisions = (
+        (
+            await s.execute(
+                select(Decision)
+                .join(Candidate, Candidate.id == Decision.candidate_id)
+                .where(Candidate.job_id.in_(job_ids))
+                .order_by(Decision.created_at)
             )
-        latest: dict[uuid.UUID, Score] = {}
-        for sc in scores:  # ordered by time, so the last one wins
-            latest[sc.candidate_id] = sc
-        last_decision: dict[uuid.UUID, Decision] = {d.candidate_id: d for d in decisions}
-        summary = agreement((d.recommended, d.decision) for d in last_decision.values())
+        )
+        .scalars()
+        .all()
+    )
+    latest: dict[uuid.UUID, Score] = {}
+    for sc in scores:  # ordered by time, so the last one wins
+        latest[sc.candidate_id] = sc
+    last_decision: dict[uuid.UUID, Decision] = {d.candidate_id: d for d in decisions}
 
+    out: dict[uuid.UUID, dict[str, Any]] = {}
+    for jid in job_ids:
+        current = versions.get(jid)
+        mine = [c for c in cands if c.job_id == jid]
+        summary = agreement(
+            (d.recommended, d.decision) for c in mine if (d := last_decision.get(c.id)) is not None
+        )
         scored, unscored = [], []
-        for c in cands:
-            base = {
+        for c in mine:
+            base: dict[str, Any] = {
                 "id": str(c.id),
                 "label": c.display_label,
                 "state": c.state,
@@ -124,22 +131,40 @@ def register(app: FastAPI, Recruiter: Any, Pl: Any) -> None:  # noqa: N803
         unscored.sort(key=lambda r: (r["state"], r["applied_at"]))
         for i, r in enumerate(scored, start=1):
             r["rank"] = i
-        return JSONResponse(
-            content={
-                "job_id": str(job_id),
-                "rubric_version": current,
-                "outdated": sum(
-                    1
-                    for r in scored
-                    if r["state"] == "SCORED"
-                    and current is not None
-                    and r["rubric_version"] < current
-                ),
-                "agreement": summary.as_dict(),
-                "scored": scored,
-                "unscored": unscored,
-            }
-        )
+        out[jid] = {
+            "job_id": str(jid),
+            "rubric_version": current,
+            "outdated": sum(
+                1
+                for r in scored
+                if r["state"] == "SCORED" and current is not None and r["rubric_version"] < current
+            ),
+            "agreement": summary.as_dict(),
+            "scored": scored,
+            "unscored": unscored,
+        }
+    return out
+
+
+def register(app: FastAPI, Recruiter: Any, Pl: Any) -> None:  # noqa: N803
+    @app.get("/jobs/{job_id}/candidates")
+    async def ranked_candidates(job_id: uuid.UUID, _: Recruiter, p: Pl) -> JSONResponse:
+        """Scored candidates by total (highest first, ties by apply time), then the rest."""
+        async with p.sessions() as s:
+            if await s.get(Job, job_id) is None:
+                return JSONResponse(
+                    status_code=404, content={"error": "not_found", "detail": "no such job"}
+                )
+            ranked = await rank_jobs(s, [job_id])
+        return JSONResponse(content=ranked[job_id])
+
+    @app.get("/queue")
+    async def queue(_: Recruiter, p: Pl) -> JSONResponse:
+        """Every job's ranking in one call (the Candidates view over every job)."""
+        async with p.sessions() as s:
+            ids = list((await s.execute(select(Job.id))).scalars())
+            ranked = await rank_jobs(s, ids)
+        return JSONResponse(content={"jobs": {str(k): v for k, v in ranked.items()}})
 
     @app.get("/candidates/{candidate_id}/score")
     async def candidate_score(candidate_id: uuid.UUID, _: Recruiter, p: Pl) -> JSONResponse:

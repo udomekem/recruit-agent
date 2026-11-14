@@ -68,7 +68,11 @@ export function qs(f: Partial<Filters> & { tab?: string }, defaultJob = "all"): 
 export async function loadQueue(f: Filters): Promise<Queue> {
   const { jobs } = await api.get<{ jobs: JobSummary[] }>("/jobs");
   const inView = f.job === "all" ? jobs : jobs.filter((j) => j.id === f.job);
-  const ranked = await Promise.all(inView.map((j) => api.get<Ranked>(`/jobs/${j.id}/candidates`)));
+  // Every job: one call (phase 5B); one job: its own ranking.
+  const ranked =
+    f.job === "all"
+      ? await api.get<{ jobs: Record<string, Ranked> }>("/queue").then((r) => inView.map((j) => r.jobs[j.id]))
+      : await Promise.all(inView.map((j) => api.get<Ranked>(`/jobs/${j.id}/candidates`)));
   const all: Row[] = [];
   let unscored = 0;
   inView.forEach((j, i) => {

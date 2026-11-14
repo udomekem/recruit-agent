@@ -16,8 +16,8 @@ export default async function JobsPage() {
           <div className="h-eyebrow">Job board</div>
           <h1 className="h-h1">Open roles.</h1>
           <p className="h-intro">
-            Every job has a rubric built from its ad. Candidates from the apply page and uploads are scored
-            against it.
+            Every job has a rubric built from its ad. Candidates from the apply page, uploads and
+            the connected inbox are scored against it. Put a job&apos;s code in an email subject to file a CV under it.
           </p>
         </div>
         <div className="h-stats" aria-label="Job counts">
@@ -73,6 +73,7 @@ export default async function JobsPage() {
                       {j.title}
                     </Link>
                     <div className="h-t2">
+                      {j.code ? `${j.code} · ` : ""}
                       {j.location} · {j.state.toLowerCase().replaceAll("_", " ")}
                     </div>
                   </td>

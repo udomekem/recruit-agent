@@ -72,7 +72,7 @@ async def sessions(settings: Settings) -> AsyncIterator[SessionMaker]:
         await conn.execute(
             text(
                 "TRUNCATE answers, audit_events, candidates, rubrics, screening_questions, "
-                "job_audit_events, jobs CASCADE"
+                "job_audit_events, jobs, mailboxes, oauth_states CASCADE"
             )
         )
     yield make_sessionmaker(engine)

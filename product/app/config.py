@@ -75,6 +75,19 @@ class Settings(BaseSettings):
     resend_api_key: SecretStr | None = None
     resend_url: str = "https://api.resend.com/emails"
 
+    # Connected inbox (phase 5B). Read only, one label. The refresh token is encrypted
+    # with inbox_token_key (a Fernet key; `make local-env` writes one).
+    inbox_poll_seconds: int = Field(default=120, ge=30)
+    inbox_max_per_poll: int = Field(default=50, ge=1)
+    inbox_max_per_day: int = Field(default=500, ge=1)
+    inbox_duplicate_days: int = Field(default=90, ge=1)
+    inbox_token_key: SecretStr | None = None
+    match_threshold: float = Field(default=0.8, ge=0, le=1)
+    match_gap: float = Field(default=0.3, ge=0, le=1)
+    google_client_id: str = ""
+    google_client_secret: SecretStr | None = None
+    google_redirect_uri: str = "http://localhost:3000/inbox/callback"
+
     # Intake (phase 1)
     company_name: str = "Northwind Talent (demo)"
     cv_max_bytes: int = Field(default=5 * 1024 * 1024, ge=1024)
@@ -94,6 +107,8 @@ class Settings(BaseSettings):
         "s3_access_key",
         "s3_secret_key",
         "resend_api_key",
+        "inbox_token_key",
+        "google_client_secret",
         mode="before",
     )
     @classmethod

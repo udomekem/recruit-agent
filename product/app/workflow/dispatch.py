@@ -60,7 +60,31 @@ class DeliveryJob:
         return f"email:{self.outbox_id}:{self.attempt}"
 
 
-QueuedJob = AdvanceJob | RubricJob | RescoreJob | DeliveryJob
+@dataclass(frozen=True)
+class InboxPollJob:
+    """Phase 5B: poll one mailbox. The window (poll number) is in the id, so one poll per
+    mailbox per window is queued however many times the cron fires."""
+
+    mailbox_id: uuid.UUID
+    window: int
+
+    @property
+    def queue_id(self) -> str:
+        return f"inbox_poll:{self.mailbox_id}:{self.window}"
+
+
+@dataclass(frozen=True)
+class InboxMessageJob:
+    """Phase 5B: process one recorded inbox message (once; repeats are no-ops)."""
+
+    message_id: uuid.UUID
+
+    @property
+    def queue_id(self) -> str:
+        return f"inbox:{self.message_id}"
+
+
+QueuedJob = AdvanceJob | RubricJob | RescoreJob | DeliveryJob | InboxPollJob | InboxMessageJob
 
 
 class Dispatcher(Protocol):
@@ -83,6 +107,14 @@ class ArqDispatcher:
             return
         if isinstance(job, RescoreJob):
             await self._pool.enqueue_job("rescore", str(job.candidate_id), _job_id=job.queue_id)
+            return
+        if isinstance(job, InboxPollJob):
+            await self._pool.enqueue_job("poll_inbox", str(job.mailbox_id), _job_id=job.queue_id)
+            return
+        if isinstance(job, InboxMessageJob):
+            await self._pool.enqueue_job(
+                "process_inbox_message", str(job.message_id), _job_id=job.queue_id
+            )
             return
         if isinstance(job, DeliveryJob):
             await self._pool.enqueue_job(

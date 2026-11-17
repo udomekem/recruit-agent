@@ -34,17 +34,46 @@ SpanKind = Literal[
 _DATE = re.compile(r"^(?:\d{4}(?:-(?:0[1-9]|1[0-2]))?|present)$")
 
 
+_NOT_STATED = {"", "not stated", "not specified", "unknown", "n/a", "na", "none", "null", "-"}
+
+
+def _none_if_placeholder(value: object) -> object:
+    """'Not stated' and the like mean the CV names nothing, not a name to look for."""
+    if isinstance(value, str) and value.strip().lower().strip(".") in _NOT_STATED:
+        return None
+    return value
+
+
 class Role(BaseModel):
     title: str = Field(min_length=2, max_length=150)
-    employer: str = Field(min_length=2, max_length=150)
+    # Optional since phase 5B ship (2026-11-17), like Study.institution below: "Seven years
+    # supervising sites" names no employer; a required field got "Not stated" from the
+    # model, the check refused it three times and the candidate went to review.
+    employer: str | None = Field(
+        default=None,
+        max_length=150,
+        description="The employer exactly as written, or null when the CV names none.",
+    )
     start: str | None = None
     end: str | None = None
     highlights: list[str] = Field(default_factory=list, max_length=3)
 
+    @field_validator("employer", mode="before")
+    @classmethod
+    def _placeholder_is_none(cls, value: object) -> object:
+        return _none_if_placeholder(value)
+
 
 class Study(BaseModel):
     qualification: str = Field(min_length=2, max_length=200)
-    institution: str = Field(min_length=2, max_length=200)
+    # Optional since phase 5B ship (2026-11-17): with a required institution, a CV that lists
+    # "Bachelor of Nursing" and no university got "Not stated" from the model, the check
+    # refused it three times and the candidate went to review.
+    institution: str | None = Field(
+        default=None,
+        max_length=200,
+        description="The institution exactly as written, or null when the CV names none.",
+    )
     end: str | None = Field(
         default=None,
         description="Completion year as four digits, e.g. '2016'. A year on the same line as "
@@ -55,6 +84,11 @@ class Study(BaseModel):
     @classmethod
     def _year_as_text(cls, value: object) -> object:
         return str(value) if isinstance(value, int) else value
+
+    @field_validator("institution", mode="before")
+    @classmethod
+    def _placeholder_is_none(cls, value: object) -> object:
+        return _none_if_placeholder(value)
 
 
 class Certification(BaseModel):
@@ -142,7 +176,8 @@ def check_profile(p: CvProfile, text: str) -> None:
 
     for i, r in enumerate(p.work_history):
         must_appear(f"work_history[{i}].title", r.title)
-        must_appear(f"work_history[{i}].employer", r.employer)
+        if r.employer:
+            must_appear(f"work_history[{i}].employer", r.employer)
         for name, d in (("start", r.start), ("end", r.end)):
             if d is not None and not _DATE.match(d):
                 problems.append(f"work_history[{i}].{name} '{d}' must be YYYY-MM, YYYY or present")
@@ -156,7 +191,8 @@ def check_profile(p: CvProfile, text: str) -> None:
             problems.append(f"work_history[{i}] starts after it ends")
     for i, s in enumerate(p.education):
         must_appear(f"education[{i}].qualification", s.qualification)
-        must_appear(f"education[{i}].institution", s.institution)
+        if s.institution:
+            must_appear(f"education[{i}].institution", s.institution)
     for skill in p.skills:
         must_appear("skill", skill)
     for c in p.certifications:

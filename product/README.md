@@ -3,8 +3,9 @@
 The Recruit Agent application: jobs and AI drafted rubrics (phase 1), an apply page with
 encrypted CV storage, CV parsing with redaction (phase 2), scoring with evidence, fairness
 and injection checks (phase 3), the recruiter dashboard (phase 4, `dashboard/`), and
-rejection emails drafted by AI, checked by code and sent with one click (phase 5). Calls
-are still stubs.
+rejection emails drafted by AI, checked by code and sent with one click (phase 5), and the
+Hira dashboard design with a connected inbox whose emailed CVs are matched to jobs
+(phase 5B). Calls are still stubs.
 Run everything from Ubuntu (WSL2) in this folder.
 Setup guide: `../stages/03-build/references/dev-environment-setup.md`.
 
@@ -30,6 +31,16 @@ first. Sent emails land in the local test inbox at http://localhost:8025 (Mailpi
 nothing leaves the machine. The review queue lists drafts to send and emails not
 delivered.
 
+Connected inbox (phase 5B): on the Inbox page, "Connect the test inbox" reads the local
+Mailpit inbox (emails tagged `Applications` stand in for a Gmail label). `make demo-inbox`
+emails three synthetic CVs: one with a job code in the subject, one to the job's plus
+address, one with no job. Press "Check now". Code rules file the first two; the job
+matcher (AI, redacted CV only) files the third only when one job clearly fits, otherwise
+it waits under "Needs a job" for you to pick. Each new candidate gets an acknowledgement
+email with the collection notice (in Mailpit). Gmail (read only, one label) needs a
+Google Cloud OAuth client: set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`
+and add `http://localhost:3000/inbox/callback` as its redirect address.
+
 Tests and the fast evals need no API key: `make services && make test && make eval`.
 
 ## Commands
@@ -44,6 +55,8 @@ Tests and the fast evals need no API key: `make services && make test && make ev
 | `make eval-selftest` | Planted regressions must fail the gate (proves the gate works), including a scorer that lifts injected CVs |
 | `make eval-rubric` / `make eval-cv` / `make eval-score` | Real model evals: rubric builder, CV parser, and the CV scorer with fairness and injection pairs (about $0.40) |
 | `make eval-reject` | Rejection writer (DeepSeek) graded by a GPT judge, judge calibration, fairness and injection (about $0.40) |
+| `make eval-match` | Job matcher evals: code rules, clear and unclear CVs, fairness pairs, attacked CVs (real model, about $0.06, 10 minutes) |
+| `make demo-inbox` | Email three synthetic CVs to the local test inbox (Mailpit) |
 | `make smoke` | One real model call (kie.ai DeepSeek by default) through the LLM client; prints the Langfuse trace URL |
 | `make migrate` | Apply database migrations |
 | `make demo-seed-offline` / `make demo-seed` | Demo jobs and candidates: no model, or through the API with the real model (about $0.15) |
@@ -78,6 +91,8 @@ Recruiter actions: `shortlist`, `reject`, `send-rejection`, `advance`, `resolve-
 | `app/api/main.py` | Recruiter API |
 | `app/workers/worker.py` | arq worker |
 | `app/rejection/` | Phase 5: reason sources, hard rule checks, the draft step, edits, the outbox and delivery |
+| `app/inbox/` | Phase 5B: mailbox providers (Mailpit, Gmail, fake), code rules, polling and ingest, job matching, Gmail sign in, token encryption |
+| `app/agents/job_matcher.py` | The job matcher agent (prompt `job-matcher` v2) |
 | `app/integrations/email.py` | Email providers: log (tests), Mailpit (local), Resend (real, switched off) |
 | `evals/` | Harness, suites (thresholds), datasets (synthetic only), reports |
 | `migrations/` | Alembic |

@@ -79,7 +79,7 @@ def _score(c: Case, o: dict[str, Any]) -> tuple[int, int, list[str]]:
     roles = prof.get("work_history") or []
     for w in exp["work_history"]:
         total += 4
-        pred = next((r for r in roles if _match(w["employer"], [r.get("employer", "")])), None)
+        pred = next((r for r in roles if _match(w["employer"], [r.get("employer") or ""])), None)
         if pred is None:
             misses.append(f"role at {w['employer']}")
             continue

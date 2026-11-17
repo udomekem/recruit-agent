@@ -159,6 +159,31 @@ def test_schema_sent_to_model_requires_every_field() -> None:
     assert all("default" not in p for p in schema["properties"].values())
 
 
+@pytest.mark.parametrize("given", [None, "Not stated", "not specified.", "N/A", ""])
+def test_a_degree_with_no_institution_is_accepted(given: str | None) -> None:
+    """Regression (phase 5B ship): "Bachelor of Science (Statistics)" with no university
+    got institution "Not stated", which the check refused three times; the candidate went
+    to review instead of being scored."""
+    p = profile(
+        education=[
+            {"qualification": "Bachelor of Science (Statistics)", "institution": given, "end": None}
+        ]
+    )
+    assert p.education[0].institution is None
+    check_profile(p, TEXT)
+    schema = strict_json_schema(CvProfile)
+    assert "institution" in schema["$defs"]["Study"]["required"]
+
+
+@pytest.mark.parametrize("given", [None, "Not stated", "Unknown"])
+def test_a_role_with_no_employer_is_accepted(given: str | None) -> None:
+    """Regression (phase 5B ship): "Seven years supervising sites" names no employer."""
+    role = {"title": "Senior Data Analyst", "employer": given, "start": None, "end": None}
+    p = profile(work_history=[role])
+    assert p.work_history[0].employer is None
+    check_profile(p, TEXT)
+
+
 def test_empty_profile_is_invalid() -> None:
     """Regression: an empty profile passed every check because there was nothing to check."""
     empty = profile(

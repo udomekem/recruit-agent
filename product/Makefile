@@ -1,7 +1,7 @@
 # Thin wrappers over Python entry points. Run from product/ inside Ubuntu (WSL2).
 UV ?= uv
 
-.PHONY: help local-env up down services logs migrate test lint typecheck eval eval-full eval-rubric eval-cv eval-score eval-reject eval-selftest smoke ci demo-seed demo-seed-offline dashboard-check e2e
+.PHONY: help local-env up down services logs migrate test lint typecheck eval eval-full eval-rubric eval-cv eval-score eval-reject eval-selftest smoke ci demo-seed demo-seed-offline demo-inbox dashboard-check e2e eval-match
 
 help:
 	@grep -E '^[a-z-]+:' Makefile | cut -d: -f1
@@ -75,5 +75,7 @@ dashboard-check: ## dashboard type check, unit tests, secret check (in Docker)
 e2e:           ## dashboard browser tests in the Playwright image (needs make up)
 	bash scripts/e2e.sh
 
+demo-inbox:    ## email three synthetic CVs to the local test inbox (needs make up and the test inbox connected)
+	$(UV) run python -m scripts.demo_inbox
 eval-match: ## Job matcher evals with the real model (phase 5B, about $0.10)
 	uv run python -m evals run --suite match

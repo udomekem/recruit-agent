@@ -100,3 +100,12 @@ to 0.8). v2 says fit is the field and kind of role only; strength is scored late
 - Gmail itself is tested with recorded responses only; the real connection needs Mani's
   Google Cloud OAuth client and a test Gmail account.
 - Microsoft 365 shows as "coming soon".
+
+## Fix from stage 04 (2026-11-17)
+
+The accessibility browser test failed: sign in hung because the all-jobs list drew every
+candidate (1,807 after repeated local seeding; 2.2 MB of HTML, 9.3 s). The list now
+draws 100 rows and a "Show N more" link adds the next 100 (`?show=`); counts and filters
+still cover everyone, and the open candidate's row is always drawn. After: 2.7 s and
+170 KB. Files: `dashboard/lib/workbench.ts` (`PAGE`, `show`), `dashboard/app/(app)/workbench.tsx`,
+new test `dashboard/e2e/list.spec.ts`. Browser tests 12 of 12.

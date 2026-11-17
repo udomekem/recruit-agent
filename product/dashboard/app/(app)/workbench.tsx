@@ -14,6 +14,7 @@ import {
   AFTER_SHORTLIST,
   type Filters,
   loadQueue,
+  PAGE,
   qs,
   REJECTED,
   type Row,
@@ -77,6 +78,10 @@ export async function Workbench(props: {
   const listDefault = f.job === "all" ? "all" : f.job; // the list path already says which job
   const candidateQs = (extra: Partial<Filters> = {}) => qs({ ...f, ...extra }, "");
   const selected = props.selectedId ?? queue.rows[0]?.id ?? null;
+  // Draw one page of rows (more on "Show more"), always far enough to include the open candidate.
+  const shown = Math.max(f.show ?? PAGE, queue.rows.findIndex((r) => r.id === selected) + 1);
+  const visible = queue.rows.slice(0, shown);
+  const more = queue.rows.length - visible.length;
   const job = queue.job;
   const ranked = queue.ranked;
   const nextUndecided = queue.all.find((r) => r.state === "SCORED" && !r.erased);
@@ -151,7 +156,7 @@ export async function Workbench(props: {
       <div className="h-toolbar">
         <nav className="h-seg" aria-label="Status">
           {STATUS_TABS.map(([s, label]) => (
-            <Link key={s || "all"} href={`${listPath}${qs({ ...f, status: s }, listDefault)}`} aria-current={f.status === s}>
+            <Link key={s || "all"} href={`${listPath}${qs({ ...f, status: s, show: undefined }, listDefault)}`} aria-current={f.status === s}>
               {label} <span>{queue.counts[s]}</span>
             </Link>
           ))}
@@ -220,8 +225,8 @@ export async function Workbench(props: {
             <span>{job ? "Ranked by score" : "Highest score first"}</span>
             <span>{queue.rows.length} people</span>
           </div>
-          {queue.rows.length ? (
-            queue.rows.map((r) => (
+          {visible.length ? (
+            visible.map((r) => (
               <Link
                 key={r.id}
                 href={`/candidates/${r.id}${candidateQs()}`}
@@ -248,6 +253,16 @@ export async function Workbench(props: {
           ) : (
             <p className="h-empty">No matching candidates. Try another job, status or number.</p>
           )}
+          {more > 0 ? (
+            <Link
+              href={`${listPath}${qs({ ...f, show: shown + PAGE }, listDefault)}`}
+              className="h-btn small"
+              style={{ margin: "12px" }}
+              scroll={false}
+            >
+              Show {Math.min(more, PAGE)} more (showing {visible.length} of {queue.rows.length})
+            </Link>
+          ) : null}
           <p className="h-qfoot">
             Scores are out of 100.
             {queue.unscored ? ` ${queue.unscored} more are still in the pipeline or need review (see To do).` : ""}

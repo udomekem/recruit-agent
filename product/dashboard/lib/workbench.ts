@@ -20,7 +20,11 @@ export const AFTER_SHORTLIST = new Set([
 ]);
 export const REJECTED = new Set(["REJECTED", "REJECTION_DRAFTED", "REJECTION_SENT"]);
 
-export type Filters = { job: string; status: Status; band: string; flag: string; q: string };
+// Rows drawn per list page. Drawing every row made the all-jobs page 2.2 MB and 9 s at
+// ~1,800 candidates (phase 5B evals); "Show more" adds another page.
+export const PAGE = 100;
+
+export type Filters = { job: string; status: Status; band: string; flag: string; q: string; show?: number };
 
 export type Row = RankedRow & { jobId: string; jobTitle: string };
 
@@ -43,6 +47,7 @@ export function readFilters(s: Record<string, string | undefined>, defaultJob = 
     band: ["advance", "maybe", "reject"].includes(s.band ?? "") ? s.band! : "",
     flag: s.flag ?? "",
     q: (s.q ?? "").slice(0, 60),
+    show: Math.min(Math.max(Math.floor(Number(s.show)) || PAGE, PAGE), 10_000),
   };
 }
 
@@ -61,6 +66,7 @@ export function qs(f: Partial<Filters> & { tab?: string }, defaultJob = "all"): 
     const v = f[k];
     if (v) p.set(k, v);
   }
+  if (f.show && f.show > PAGE) p.set("show", String(f.show));
   const s = p.toString();
   return s ? `?${s}` : "";
 }
